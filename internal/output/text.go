@@ -64,7 +64,7 @@ func PrintRecordDetailTo(w io.Writer, record *models.PipelineRecord, fs []failur
 				if sp.Status == "Failed" {
 					fmt.Fprintf(w, "    ✘ Step: %s [%s]\n", sp.Name, sp.Status)
 					for _, f := range fs {
-						if f.Step == sp.Name {
+						if f.Stage == st.Name && f.Task == tk.Name && f.Step == sp.Name {
 							fmt.Fprintf(w, "      错误: %s\n", f.Message)
 							for _, kv := range f.Details {
 								fmt.Fprintf(w, "        %s: %s\n", kv.Key, truncate(kv.Value, 200))
