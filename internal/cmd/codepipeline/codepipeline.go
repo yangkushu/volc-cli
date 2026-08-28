@@ -60,8 +60,3 @@ func findPipelineByName(c *cpclient.Client, ws, nameOrId string) (*models.Pipeli
 	}
 	return nil, fmt.Errorf("未找到流水线 %q, 可用流水线(前 %d): %s", nameOrId, limit, strings.Join(names, ", "))
 }
-
-// newFailuresCmd Task 8 实现.
-func newFailuresCmd() *cobra.Command {
-	return &cobra.Command{Use: "failures", Short: "最近失败记录(待实现)", Hidden: true}
-}
