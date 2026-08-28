@@ -37,8 +37,7 @@ jobs:
       - name: Upload binaries
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/volc-cli-linux-amd64
-            dist/volc-cli-windows-amd64.exe
+          # 每个 matrix 腿只上传本腿产物; action 按 tag 幂等, 两腿都指向同一 release
+          files: "dist/volc-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
           generate_release_notes: true
           fail_on_unmatched_files: true
