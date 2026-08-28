@@ -43,6 +43,7 @@ func NewRootCommand() *cobra.Command {
 	pf.StringVar(&globalOpts.SecretKey, "sk", "", "访问密钥 Secret, 默认读环境变量 "+envSK)
 	pf.StringVar(&globalOpts.WorkspaceId, "workspace-id", "", "持续交付工作区 ID, 默认读环境变量 "+envWs)
 	pf.BoolVar(&globalOpts.JSON, "json", false, "以 JSON 格式输出(字段名与官方 SDK 一致)")
+	root.AddCommand(NewCheckCredentialsCmd())
 	return root
 }
 
