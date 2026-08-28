@@ -11,6 +11,7 @@ import (
 )
 
 func newGetPipelineRecordCmd() *cobra.Command {
+	var recordId string
 	c := &cobra.Command{
 		Use:   "get-pipeline-record",
 		Short: "GetPipelineRecord: 查询单条执行记录详情(含失败信息)",
@@ -20,7 +21,6 @@ func newGetPipelineRecordCmd() *cobra.Command {
 			if len(args) != 1 {
 				return fmt.Errorf("需要恰好 1 个参数: 流水线名称或 ID")
 			}
-			recordId, _ := cmd.Flags().GetString("id")
 			if recordId == "" {
 				return fmt.Errorf("必须用 --id 指定记录 ID(可先用 list-pipeline-records 查看)")
 			}
@@ -52,6 +52,6 @@ func newGetPipelineRecordCmd() *cobra.Command {
 			return output.PrintRecordDetail(rec, fs, c.ConsoleURL(ws, p.Id, recordId))
 		},
 	}
-	c.Flags().String("id", "", "执行记录 ID(必填)")
+	c.Flags().StringVar(&recordId, "id", "", "执行记录 ID(必填)")
 	return c
 }

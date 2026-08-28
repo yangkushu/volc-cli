@@ -42,7 +42,7 @@ func NewCheckCredentialsCmd() *cobra.Command {
 			// 真实探针: ListPipelines 不需要 workspace 时可传空, 失败再区分鉴权错/参数错
 			c := cpclient.New(ak, sk)
 			if _, err := c.ListPipelines(""); err != nil {
-				res.Error = classifyErr(err) + " (原文: " + err.Error() + ")"
+				res.Error = classifyErr(err) + " (原文: " + scrubSecret(err.Error(), ak, sk) + ")"
 				return finish(cmd, res)
 			}
 			res.Valid = true
@@ -50,6 +50,16 @@ func NewCheckCredentialsCmd() *cobra.Command {
 			return finish(cmd, res)
 		},
 	}
+}
+
+// scrubSecret 将错误信息中出现的密钥值替换为 ***, 防止泄露.
+func scrubSecret(s, ak, sk string) string {
+	for _, secret := range []string{ak, sk} {
+		if secret != "" {
+			s = strings.ReplaceAll(s, secret, "***")
+		}
+	}
+	return s
 }
 
 // classifyErr 将 SDK 错误归类为可读建议.

@@ -15,8 +15,10 @@ type Client struct {
 }
 
 // New 创建 client. ak/sk 为空时依赖 SDK 从环境变量自动读取.
+// 每次调用 cp.NewInstance() 返回独立实例(配置与单例一致, 含 retry),
+// 避免多 client 不同凭证时覆盖 SDK 包级 DefaultInstance 单例.
 func New(ak, sk string) *Client {
-	svc := cp.DefaultInstance
+	svc := cp.NewInstance()
 	if ak != "" {
 		svc.Client.SetAccessKey(ak)
 	}

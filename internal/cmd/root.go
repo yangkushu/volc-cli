@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"kuopin/volc-cli/internal/cmd/codepipeline"
@@ -38,12 +36,4 @@ func NewRootCommand() *cobra.Command {
 	root.AddCommand(NewCheckCredentialsCmd())
 	root.AddCommand(codepipeline.NewCodePipelineCmd())
 	return root
-}
-
-// resolveWorkspaceId 返回生效的 workspace id, 未配置时报错.
-func resolveWorkspaceId() (string, error) {
-	if opts.Global.WorkspaceId != "" {
-		return opts.Global.WorkspaceId, nil
-	}
-	return "", fmt.Errorf("workspace-id 未设置: 请用 --workspace-id 指定或导出环境变量 %s(可从控制台流水线 URL /cp/workspace/{id}/pipeline/... 中获取)", envWs)
 }
