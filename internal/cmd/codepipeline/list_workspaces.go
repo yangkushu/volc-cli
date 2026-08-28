@@ -14,7 +14,7 @@ func newListWorkspacesCmd() *cobra.Command {
 		Use:   "list-workspaces",
 		Short: "ListWorkspaces: 列出账户下全部工作区",
 		Long: "ListWorkspaces: 列出账户下全部工作区(无需 WorkspaceId).\n" +
-			"用于获取 workspace-id: 从输出 ID 列取值, 配置到 --workspace-id 或环境变量 VOLC_CP_WORKSPACE_ID.",
+			"各命令已支持自动解析 workspace; 本命令用于手动查看或确认多个工作区时用哪个.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := newClient()
 			if err != nil {

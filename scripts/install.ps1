@@ -46,5 +46,5 @@ foreach ($dest in @("$HOME\.claude\skills\volc-cli", "$HOME\.codex\skills\volc-c
 
 Write-Host "✔ 安装完成: $installDir\volc-cli.exe"
 Write-Host "  请将 $installDir 加入 PATH, 或使用完整路径调用"
-Write-Host "  凭证配置: setx VOLC_ACCESSKEY ... / setx VOLC_SECRETKEY ... / setx VOLC_CP_WORKSPACE_ID ..."
+Write-Host "  凭证配置: setx VOLC_ACCESSKEY ... / setx VOLC_SECRETKEY ..."
 Write-Host "  验证: volc-cli check-credentials"

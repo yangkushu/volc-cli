@@ -14,10 +14,9 @@ description: 查询火山云持续交付(CodePipeline)流水线的运行记录�
 ## 前置要求
 
 - 已安装 volc-cli(见仓库 README 安装章节)
-- 环境变量已配置: `VOLC_ACCESSKEY`、`VOLC_SECRETKEY`、`VOLC_CP_WORKSPACE_ID`
-- 不知道 WorkspaceId 时: `volc-cli codepipeline list-workspaces` 从输出 ID 列取值
-  (也可从控制台 URL `/cp/v2/workspace/{id}/...` 获取)
-- 未配置时先跑 `volc-cli check-credentials` 看提示, 不要猜测
+- 环境变量已配置: `VOLC_ACCESSKEY`、`VOLC_SECRETKEY`
+- WorkspaceId 无需配置, 命令会自动解析(多工作区时按提示加 --workspace-id)
+- 未配置凭证时先跑 `volc-cli check-credentials` 看提示, 不要猜测
 
 ## 操作流程
 

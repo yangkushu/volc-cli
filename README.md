@@ -59,11 +59,10 @@ cd volc-cli && go build -o volc-cli .
 
     export VOLC_ACCESSKEY=AKxxx
     export VOLC_SECRETKEY=SKxxx
-    export VOLC_CP_WORKSPACE_ID=从 list-workspaces 或控制台 URL 获取(/cp/v2/workspace/{id}/...)
 
-不知道 WorkspaceId 时用 CLI 自动获取:
+WorkspaceId 无需手动配置: 命令会通过 `ListWorkspaces` 自动解析(账户下唯一工作区直接用; 多个工作区时按提示用 `--workspace-id` 指定).
 
-    volc-cli codepipeline list-workspaces
+    volc-cli codepipeline list-workspaces      # 手动查看/确认工作区
 
 验证:
 

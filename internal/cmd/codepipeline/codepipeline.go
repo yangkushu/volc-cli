@@ -30,9 +30,27 @@ func NewCodePipelineCmd() *cobra.Command {
 	return c
 }
 
-// resolveWs 解析 workspace id, 未配置时报错.
-func resolveWs() (string, error) {
-	return config.ResolveWorkspaceId(opts.Global.WorkspaceId)
+// resolveWs 解析 workspace id: flag/env 优先, 未配置时调 ListWorkspaces 自动解析(唯一工作区直接用).
+func resolveWs(client *cpclient.Client, ctx context.Context) (string, error) {
+	if v, err := config.ResolveWorkspaceId(opts.Global.WorkspaceId); err == nil {
+		return v, nil
+	}
+	resp, err := client.ListWorkspaces(ctx, 1, 100)
+	if err != nil {
+		return "", fmt.Errorf("workspace-id 未配置且自动获取失败: %w(请用 --workspace-id 指定或先跑 list-workspaces 查看)", err)
+	}
+	switch len(resp.Items) {
+	case 0:
+		return "", fmt.Errorf("账户下无工作区, 请先在控制台创建")
+	case 1:
+		return volcengine.StringValue(resp.Items[0].Id), nil
+	default:
+		names := make([]string, 0, len(resp.Items))
+		for _, w := range resp.Items {
+			names = append(names, volcengine.StringValue(w.Name))
+		}
+		return "", fmt.Errorf("账户下有多个工作区: %s, 请用 --workspace-id 指定", strings.Join(names, ", "))
+	}
 }
 
 // newClient 用全局凭证构造 cpclient, 失败时报错.

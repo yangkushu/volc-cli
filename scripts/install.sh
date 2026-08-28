@@ -38,5 +38,5 @@ done
 
 echo "✔ 安装完成: $install_dir/$BIN"
 echo "  请确认 $install_dir 在 PATH 中, 或执行: export PATH=\"$install_dir:\$PATH\""
-echo "  凭证配置: export VOLC_ACCESSKEY=... VOLC_SECRETKEY=... VOLC_CP_WORKSPACE_ID=..."
+echo "  凭证配置: export VOLC_ACCESSKEY=... VOLC_SECRETKEY=..."
 echo "  验证: volc-cli check-credentials"

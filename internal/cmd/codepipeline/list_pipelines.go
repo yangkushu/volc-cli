@@ -12,13 +12,13 @@ func newListPipelinesCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list-pipelines",
 		Short: "ListPipelines: 列出工作区全部流水线",
-		Long:  "ListPipelines: 列出工作区全部流水线.\n需配置 --workspace-id 或环境变量 VOLC_CP_WORKSPACE_ID.",
+		Long:  "ListPipelines: 列出工作区全部流水线.\nWorkspace 未配置时自动解析(唯一工作区直接用, 多个工作区用 --workspace-id 指定).",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ws, err := resolveWs()
+			client, err := newClient()
 			if err != nil {
 				return err
 			}
-			client, err := newClient()
+			ws, err := resolveWs(client, context.Background())
 			if err != nil {
 				return err
 			}

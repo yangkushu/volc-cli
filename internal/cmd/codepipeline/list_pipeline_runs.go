@@ -21,11 +21,11 @@ func newListPipelineRunsCmd() *cobra.Command {
 			if len(args) != 1 {
 				return fmt.Errorf("需要恰好 1 个参数: 流水线名称或 ID")
 			}
-			ws, err := resolveWs()
+			client, err := newClient()
 			if err != nil {
 				return err
 			}
-			client, err := newClient()
+			ws, err := resolveWs(client, context.Background())
 			if err != nil {
 				return err
 			}

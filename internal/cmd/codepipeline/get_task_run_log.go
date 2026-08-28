@@ -37,11 +37,11 @@ func newGetTaskRunLogCmd() *cobra.Command {
 			if runId == "" {
 				return fmt.Errorf("必须用 --run-id 指定运行 ID(可先用 list-pipeline-runs 查看)")
 			}
-			ws, err := resolveWs()
+			client, err := newClient()
 			if err != nil {
 				return err
 			}
-			client, err := newClient()
+			ws, err := resolveWs(client, context.Background())
 			if err != nil {
 				return err
 			}
