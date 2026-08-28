@@ -1,6 +1,8 @@
 package codepipeline
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 	"kuopin/volc-cli/internal/opts"
 	"kuopin/volc-cli/internal/output"
@@ -16,7 +18,11 @@ func newListPipelinesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			resp, err := newClient().ListPipelines(ws)
+			client, err := newClient()
+			if err != nil {
+				return err
+			}
+			resp, err := client.ListPipelines(context.Background(), ws)
 			if err != nil {
 				return err
 			}

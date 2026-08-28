@@ -1,63 +1,90 @@
-// Package cpclient 封装火山云持续交付(CodePipeline) SDK 访问.
-// region 使用 SDK 默认 cn-north-1(该服务仅北京 region).
+// Package cpclient 封装火山云持续交付(CodePipeline) V2 API 访问.
+// 基于官方新 SDK github.com/volcengine/volcengine-go-sdk/service/cp(API 版本 2023-05-01).
+// region 固定 cn-north-1(该服务仅北京 region).
 package cpclient
 
 import (
+	"context"
 	"fmt"
 
-	cp "github.com/volcengine/volc-sdk-golang/service/codePipeline"
-	"github.com/volcengine/volc-sdk-golang/service/codePipeline/models"
+	"github.com/volcengine/volcengine-go-sdk/service/cp"
+	"github.com/volcengine/volcengine-go-sdk/volcengine"
+	"github.com/volcengine/volcengine-go-sdk/volcengine/session"
 )
 
-// Client 持有已配置凭证的 codePipeline 实例.
+// Client 持有已配置凭证的 cp 服务实例.
 type Client struct {
-	svc *cp.CodePipeline
+	svc *cp.CP
 }
 
-// New 创建 client. ak/sk 为空时依赖 SDK 从环境变量自动读取.
-// 每次调用 cp.NewInstance() 返回独立实例(配置与单例一致, 含 retry),
-// 避免多 client 不同凭证时覆盖 SDK 包级 DefaultInstance 单例.
-func New(ak, sk string) *Client {
-	svc := cp.NewInstance()
-	if ak != "" {
-		svc.Client.SetAccessKey(ak)
+// New 创建 client, ak/sk 为空时依赖 SDK 默认凭证链(环境变量等).
+// 凭证优先级与 CLI 全局约定一致: flag > 环境变量.
+func New(ak, sk string) (*Client, error) {
+	cfg := volcengine.NewConfig().WithRegion("cn-north-1")
+	if ak != "" || sk != "" {
+		cfg = cfg.WithAkSk(ak, sk)
 	}
-	if sk != "" {
-		svc.Client.SetSecretKey(sk)
+	sess, err := session.NewSession(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("创建 session 失败: %w", err)
 	}
-	return &Client{svc: svc}
+	return &Client{svc: cp.New(sess, cfg)}, nil
 }
 
-// ListPipelines 列出工作区内全部流水线(SDK 该接口无分页参数).
-func (c *Client) ListPipelines(workspaceId string) (*models.ListPipelinesResponse, error) {
-	return c.svc.ListPipelines(&models.ListPipelinesRequest{WorkspaceId: workspaceId})
-}
-
-// ListPipelineRecords 按需倒序列出流水线执行记录, filterStatus 为空表示不过滤.
-func (c *Client) ListPipelineRecords(workspaceId, pipelineId string, pageSize int64, filterStatus string) (*models.ListPipelineRecordsResponse, error) {
-	req := &models.ListPipelineRecordsRequest{
-		WorkspaceId: workspaceId,
-		PipelineId:  pipelineId,
-		Page:        models.Page{PageNumber: 1, PageSize: pageSize},
-		Desc:        true,
-	}
-	if filterStatus != "" {
-		req.Filter = &models.PipelineRecordFilter{Statuses: filterStatus}
-	}
-	return c.svc.ListPipelineRecords(req)
-}
-
-// GetPipelineRecord 查询单条执行记录详情(含 Stages/Tasks/Steps).
-func (c *Client) GetPipelineRecord(workspaceId, pipelineId, recordId string) (*models.GetPipelineRecordResponse, error) {
-	return c.svc.GetPipelineRecord(&models.GetPipelineRecordRequest{
-		WorkspaceId: workspaceId,
-		PipelineId:  pipelineId,
-		Id:          recordId,
+// ListWorkspaces 列出账户下全部工作区(无需 WorkspaceId, 可作凭证自举).
+func (c *Client) ListWorkspaces(ctx context.Context, pageNumber, pageSize int64) (*cp.ListWorkspacesOutput, error) {
+	return c.svc.ListWorkspacesWithContext(ctx, &cp.ListWorkspacesInput{
+		PageNumber: &pageNumber,
+		PageSize:   &pageSize,
 	})
 }
 
-// ConsoleURL 返回该执行记录的控制台页面地址.
-func (c *Client) ConsoleURL(workspaceId, pipelineId, recordId string) string {
-	return fmt.Sprintf("https://console.volcengine.com/cp/workspace/%s/pipeline/%s/record/%s",
-		workspaceId, pipelineId, recordId)
+// ListPipelines 列出工作区内全部流水线.
+func (c *Client) ListPipelines(ctx context.Context, workspaceId string) (*cp.ListPipelinesOutput, error) {
+	return c.svc.ListPipelinesWithContext(ctx, &cp.ListPipelinesInput{
+		WorkspaceId: &workspaceId,
+	})
+}
+
+// ListPipelineRuns 列出流水线执行记录(按需过滤状态, 倒序).
+func (c *Client) ListPipelineRuns(ctx context.Context, workspaceId, pipelineId string, maxResults int64, status string) (*cp.ListPipelineRunsOutput, error) {
+	in := &cp.ListPipelineRunsInput{
+		WorkspaceId: &workspaceId,
+		PipelineId:  &pipelineId,
+		MaxResults:  &maxResults,
+	}
+	if status != "" {
+		in.Filter = &cp.FilterForListPipelineRunsInput{
+			Statuses: []*string{&status},
+		}
+	}
+	return c.svc.ListPipelineRunsWithContext(ctx, in)
+}
+
+// ListTaskRuns 列出单次运行中某个任务的执行步骤(含 step 级状态与耗时).
+func (c *Client) ListTaskRuns(ctx context.Context, workspaceId, pipelineId, runId, taskId string) (*cp.ListTaskRunsOutput, error) {
+	return c.svc.ListTaskRunsWithContext(ctx, &cp.ListTaskRunsInput{
+		WorkspaceId:   &workspaceId,
+		PipelineId:    &pipelineId,
+		PipelineRunId: &runId,
+		TaskId:        &taskId,
+	})
+}
+
+// GetTaskRunLog 拉取某 step 的全量日志行(调用方本地截尾, 避免服务端分页语义差异).
+func (c *Client) GetTaskRunLog(ctx context.Context, workspaceId, pipelineId, runId, taskId, taskRunId, stepName string) (*cp.GetTaskRunLogOutput, error) {
+	return c.svc.GetTaskRunLogWithContext(ctx, &cp.GetTaskRunLogInput{
+		WorkspaceId:   &workspaceId,
+		PipelineId:    &pipelineId,
+		PipelineRunId: &runId,
+		TaskId:        &taskId,
+		TaskRunId:     &taskRunId,
+		StepName:      &stepName,
+	})
+}
+
+// ConsoleURL 返回该执行记录的控制台页面地址(V2 控制台).
+func (c *Client) ConsoleURL(workspaceId, pipelineId, runId string) string {
+	return fmt.Sprintf("https://console.volcengine.com/cp/v2/workspace/%s/pipeline/%s/run/%s",
+		workspaceId, pipelineId, runId)
 }

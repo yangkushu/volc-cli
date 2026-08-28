@@ -1,32 +1,37 @@
 package failure
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/volcengine/volc-sdk-golang/service/codePipeline/models"
+	"github.com/volcengine/volcengine-go-sdk/service/cp"
 )
 
-func failedStep(name string, kvs ...models.KVPair) models.PipelineRecordStep {
-	return models.PipelineRecordStep{Name: name, Status: "Failed", Result: kvs}
-}
+func sptr(s string) *string { return &s }
 
 func TestExtractFindsFailedStep(t *testing.T) {
-	rec := &models.PipelineRecord{
-		Status: "Failed",
-		Stages: []models.PipelineRecordStage{{
-			Name: "构建", Status: "Failed",
-			Tasks: []models.PipelineRecordTask{{
-				Name: "build-image", Status: "Failed", Type: "Build",
-				Steps: []models.PipelineRecordStep{
-					{Name: "checkout", Status: "Success"},
-					failedStep("docker-build",
-						models.KVPair{Key: "exit_code", Value: "1"},
-						models.KVPair{Key: "error", Value: "exited with code 1"}),
-				},
+	run := &cp.ItemForListPipelineRunsOutput{
+		Status: sptr("Failed"),
+		Stages: []*cp.StageForListPipelineRunsOutput{{
+			Name:   sptr("构建"),
+			Status: sptr("Failed"),
+			Tasks: []*cp.TaskForListPipelineRunsOutput{{
+				Name:   sptr("build-image"),
+				Status: sptr("Failed"),
+				Id:     sptr("task-1"),
 			}},
 		}},
 	}
-	got := Extract(rec)
+	taskRuns := map[string][]*cp.ItemForListTaskRunsOutput{
+		"task-1": {{
+			Status: sptr("Failed"),
+			Steps: []*cp.StepForListTaskRunsOutput{
+				{Name: sptr("checkout"), Status: sptr("Succeeded")},
+				{Name: sptr("docker-build"), Status: sptr("Failed")},
+			},
+		}},
+	}
+	got := Extract(run, taskRuns)
 	if len(got) != 1 {
 		t.Fatalf("应提取 1 条失败, got %d", len(got))
 	}
@@ -34,36 +39,81 @@ func TestExtractFindsFailedStep(t *testing.T) {
 	if f.Stage != "构建" || f.Task != "build-image" || f.Step != "docker-build" {
 		t.Errorf("路径错误: %+v", f)
 	}
-	if f.Message != "exited with code 1" {
-		t.Errorf("Message 应取 error KV, got %q", f.Message)
-	}
-	if len(f.Details) != 2 {
-		t.Errorf("Details 应保留全部 Result KV, got %d", len(f.Details))
-	}
 }
 
 func TestExtractNoFailure(t *testing.T) {
-	rec := &models.PipelineRecord{Status: "Success"}
-	if got := Extract(rec); len(got) != 0 {
-		t.Errorf("成功记录不应有失败项, got %d", len(got))
+	run := &cp.ItemForListPipelineRunsOutput{Status: sptr("Succeeded")}
+	if got := Extract(run, nil); len(got) != 0 {
+		t.Errorf("成功运行不应有失败项, got %d", len(got))
 	}
 }
 
-func TestExtractMessageFallback(t *testing.T) {
-	rec := &models.PipelineRecord{
-		Status: "Failed",
-		Stages: []models.PipelineRecordStage{{
-			Name: "部署", Status: "Failed",
-			Tasks: []models.PipelineRecordTask{{
-				Name: "deploy", Status: "Failed",
-				Steps: []models.PipelineRecordStep{
-					{Name: "kubectl", Status: "Failed", Result: []models.KVPair{{Key: "log", Value: "pod crash"}}},
-				},
+func TestExtractNilRun(t *testing.T) {
+	if got := Extract(nil, nil); len(got) != 0 {
+		t.Errorf("nil run 应返回空, got %d", len(got))
+	}
+}
+
+func TestExtractTaskFailedNoTaskRuns(t *testing.T) {
+	run := &cp.ItemForListPipelineRunsOutput{
+		Stages: []*cp.StageForListPipelineRunsOutput{{
+			Name: sptr("部署"),
+			Tasks: []*cp.TaskForListPipelineRunsOutput{{
+				Name:   sptr("deploy"),
+				Status: sptr("Failed"),
+				Id:     sptr("task-2"),
 			}},
 		}},
 	}
-	got := Extract(rec)
-	if len(got) != 1 || got[0].Message != "pod crash" {
-		t.Errorf("无 error/message KV 时应兜底取第一个非空 KV, got %+v", got)
+	got := Extract(run, nil)
+	if len(got) != 1 {
+		t.Fatalf("无 taskRuns 时应按 task 级提取 1 条, got %d", len(got))
+	}
+	if got[0].Task != "deploy" || got[0].Step != "" {
+		t.Errorf("task 级失败不应有 step, got %+v", got[0])
+	}
+}
+
+func TestExtractTaskFailedNoFailedSteps(t *testing.T) {
+	run := &cp.ItemForListPipelineRunsOutput{
+		Stages: []*cp.StageForListPipelineRunsOutput{{
+			Name: sptr("构建"),
+			Tasks: []*cp.TaskForListPipelineRunsOutput{{
+				Name:   sptr("build"),
+				Status: sptr("Failed"),
+				Id:     sptr("task-3"),
+			}},
+		}},
+	}
+	// taskRun 存在但所有 step 都成功(失败信息在 task 级)
+	taskRuns := map[string][]*cp.ItemForListTaskRunsOutput{
+		"task-3": {{
+			Status: sptr("Failed"),
+			Steps:  []*cp.StepForListTaskRunsOutput{{Name: sptr("s1"), Status: sptr("Succeeded")}},
+		}},
+	}
+	got := Extract(run, taskRuns)
+	if len(got) != 1 || got[0].Step != "" {
+		t.Errorf("应回退 task 级失败, got %+v", got)
+	}
+}
+
+func TestTailLogLines(t *testing.T) {
+	lines := []*string{
+		sptr("line1\n"),
+		sptr(""),
+		sptr("line2\n"),
+		sptr("   \n"),
+		sptr("line3"),
+	}
+	got := TailLogLines(lines, 3)
+	if len(got) != 3 {
+		t.Fatalf("应取 3 行, got %d: %v", len(got), got)
+	}
+	if strings.Join(got, "|") != "line1|line2|line3" {
+		t.Errorf("顺序或内容错误: %v", got)
+	}
+	if got2 := TailLogLines(lines, 10); len(got2) != 3 {
+		t.Errorf("行数不足时应返回全部, got %d", len(got2))
 	}
 }

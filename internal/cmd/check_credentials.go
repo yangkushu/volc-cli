@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -29,7 +30,7 @@ func NewCheckCredentialsCmd() *cobra.Command {
 		Short: "检查 AK/SK 是否设置且有效",
 		Long: "检查访问凭证:\n" +
 			"1. 是否已通过 --ak/--sk 或环境变量 " + envAK + "/" + envSK + " 设置;\n" +
-			"2. 调用 ListPipelines 验证凭证真实有效(只读操作).\n" +
+			"2. 调用 ListWorkspaces 验证凭证真实有效(只读操作, 无需 workspace-id).\n" +
 			"region 固定 cn-north-1(持续交付仅北京 region).",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ak, sk := config.ResolveCredentials(opts.Global.AccessKey, opts.Global.SecretKey)
@@ -39,9 +40,13 @@ func NewCheckCredentialsCmd() *cobra.Command {
 				return finish(cmd, res)
 			}
 			res.Configured = true
-			// 真实探针: ListPipelines 不需要 workspace 时可传空, 失败再区分鉴权错/参数错
-			c := cpclient.New(ak, sk)
-			if _, err := c.ListPipelines(""); err != nil {
+			// 真实探针: ListWorkspaces 无需 WorkspaceId, 不会因缺参数误报
+			c, err := cpclient.New(ak, sk)
+			if err != nil {
+				res.Error = "创建客户端失败: " + scrubSecret(err.Error(), ak, sk)
+				return finish(cmd, res)
+			}
+			if _, err := c.ListWorkspaces(context.Background(), 1, 1); err != nil {
 				res.Error = classifyErr(err) + " (原文: " + scrubSecret(err.Error(), ak, sk) + ")"
 				return finish(cmd, res)
 			}
@@ -109,6 +114,6 @@ func printTextCheck(w io.Writer, res checkResult) {
 	if res.Error != "" {
 		fmt.Fprintln(w, "  ✘", res.Error)
 	} else if res.Valid {
-		fmt.Fprintln(w, "  ✔ 调用 ListPipelines 验证通过, 凭证有效")
+		fmt.Fprintln(w, "  ✔ 调用 ListWorkspaces 验证通过, 凭证有效")
 	}
 }

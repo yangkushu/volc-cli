@@ -1,13 +1,15 @@
 # volc-cli
 
-火山云(Volcengine) CLI 工具. 命令结构与官方 Go SDK 对齐:
+火山云(Volcengine) CLI 工具. 命令结构与官方 OpenAPI 对齐:
 
     volc-cli <模块> <命令>
 
-- 模块名 = SDK `service/` 包名小写(如 `codepipeline`)
+- 模块名 = SDK `service/` 包名小写(如 `codepipeline` = service/cp, 持续交付)
 - 命令名 = OpenAPI Action 转 kebab-case(如 `ListPipelines` → `list-pipelines`)
-- flag 名 = SDK 请求字段转 kebab-case(如 `--workspace-id`)
-- `--json` 输出字段名与 SDK json tag 一致(保持大写)
+- flag 名 = API 请求字段转 kebab-case(如 `--workspace-id`)
+- `--json` 输出字段名与 SDK 结构一致
+
+持续交付模块基于 **V2 OpenAPI(API 版本 2023-05-01, 官方 Go SDK `volcengine-go-sdk`)**. 旧版 V1 API 已于 2025-07-31 下线.
 
 完整命名规范与开发约定见 [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -57,7 +59,11 @@ cd volc-cli && go build -o volc-cli .
 
     export VOLC_ACCESSKEY=AKxxx
     export VOLC_SECRETKEY=SKxxx
-    export VOLC_CP_WORKSPACE_ID=从控制台流水线 URL 获取(/cp/workspace/{id}/pipeline/...)
+    export VOLC_CP_WORKSPACE_ID=从 list-workspaces 或控制台 URL 获取(/cp/v2/workspace/{id}/...)
+
+不知道 WorkspaceId 时用 CLI 自动获取:
+
+    volc-cli codepipeline list-workspaces
 
 验证:
 
@@ -69,17 +75,20 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
 ## 持续交付(codepipeline)
 
+    # 工作区列表(获取 workspace-id, 无需凭证以外的配置)
+    volc-cli codepipeline list-workspaces
+
     # 流水线列表
     volc-cli codepipeline list-pipelines
 
-    # 发布记录(含每次发布的参数 DynamicEnvs)
-    volc-cli codepipeline list-pipeline-records <流水线名或ID> --page-size 10
+    # 执行记录(含每次发布的参数, 秘密参数脱敏)
+    volc-cli codepipeline list-pipeline-runs <流水线名或ID> [--page-size N] [--status Failed]
 
-    # 单条记录详情(失败步骤展开错误信息)
-    volc-cli codepipeline get-pipeline-record <流水线名或ID> --id <记录ID>
+    # 查询某次运行的 step 日志(--run-id 从执行记录拿, 默认自动定位失败 step)
+    volc-cli codepipeline get-task-run-log <流水线名或ID> --run-id <运行ID> [--tail N]
 
-    # 最近一次失败(默认)/最近 N 次失败: stage→task→step 定位 + 错误信息 + 控制台 URL
-    volc-cli codepipeline failures <流水线名或ID> [--page-size N]
+    # 最近一次失败(默认)/最近 N 次失败: stage→task→step 定位 + 失败日志尾部 + 控制台 URL
+    volc-cli codepipeline failures <流水线名或ID> [--page-size N] [--tail N]
 
 所有命令加 `--json` 切结构化输出.
 
