@@ -478,7 +478,7 @@ git add internal/cpclient && git commit -m "feat: cpclient 封装 codePipeline S
 - Produces:
   - `failure.Failure{Stage, Task, Step, Message string; Details []models.KVPair}`
   - `failure.Extract(record *models.PipelineRecord) []Failure` — 遍历三层, 收集 Status=="Failed" 的 step; Message 取 Result KV 中第一个可读值(见 messageKeys).
-  - `failure.ConsoleURL(workspaceId, pipelineId, recordId string) string` — 从 cpclient 移到这里(渲染层需要), cpclient 保留自己的但内部共用此函数; 若重复则只在 failure 提供, cpclient 删除自己的(二选一, 以"只在一处"为准).
+  - ConsoleURL 归属裁定: cpclient.ConsoleURL 已存在(Task 3), 本包不重复实现; Task 7/8 用 c.ConsoleURL(...). failure 包只做提取, 不含 URL 构造.
 
 - [ ] **Step 1: 写失败测试 extract_test.go**
 
