@@ -1,0 +1,45 @@
+name: release
+
+# tag 推送自动构建 win/linux x64 并发布 Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:   # 手动兜底(默认按 push 时的 ref 构建)
+
+permissions:
+  contents: write      # 上传 Release 资产所需
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: windows
+            goarch: amd64
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o "dist/volc-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" .
+      - name: Upload binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/volc-cli-linux-amd64
+            dist/volc-cli-windows-amd64.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true
