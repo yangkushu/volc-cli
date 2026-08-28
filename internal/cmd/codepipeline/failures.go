@@ -44,6 +44,11 @@ func newFailuresCmd() *cobra.Command {
 				return err
 			}
 			if len(list.Items) == 0 {
+				if opts.Global.JSON {
+					return output.PrintJSON(map[string]any{
+						"PipelineId": p.Id, "PipelineName": p.Name, "Items": []failureItem{},
+					})
+				}
 				fmt.Fprintln(cmd.OutOrStdout(), "无失败记录")
 				return nil
 			}
