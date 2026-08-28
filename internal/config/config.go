@@ -38,14 +38,10 @@ func ResolveWorkspaceId(flagVal string) (string, error) {
 	return "", fmt.Errorf("workspace-id 未设置: 请用 --workspace-id 指定或导出环境变量 %s(可从控制台流水线 URL /cp/workspace/{id}/pipeline/... 中获取)", EnvWorkspaceId)
 }
 
-// MaskSecret 返回密钥脱敏描述: 空值返回"未设置";
-// 短值(不满足可辨识长度)完全掩码为"***"; 较长值仅暴露前 4 位前缀与长度, 不暴露完整内容.
+// MaskSecret 返回密钥脱敏描述: 空值返回"未设置"; 非空只暴露长度, 不暴露任何内容(含前缀).
 func MaskSecret(s string) string {
 	if s == "" {
 		return "未设置"
 	}
-	if len(s) <= 4 {
-		return "***"
-	}
-	return fmt.Sprintf("%s...(len=%d)", s[:4], len(s))
+	return fmt.Sprintf("*** (len=%d)", len(s))
 }

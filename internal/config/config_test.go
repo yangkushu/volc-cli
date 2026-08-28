@@ -25,8 +25,8 @@ func TestResolveCredentialsEnvFallback(t *testing.T) {
 func TestMaskSecret(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"", "未设置"},
-		{"abc", "***"},
-		{"AKLT1234567890abcdef", "AKLT...(len=20)"},
+		{"abc", "*** (len=3)"},
+		{"AKLT1234567890abcdef", "*** (len=20)"},
 	}
 	for _, c := range cases {
 		if got := MaskSecret(c.in); got != c.want {
