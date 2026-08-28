@@ -15,9 +15,9 @@
 
 ## 安装
 
-### 一键安装(推荐)
+### 完整安装：CLI + Skill（推荐）
 
-自动下载指定平台的最新可执行文件, 并安装 Claude Code / Codex 的 skills:
+自动下载最新 Release 的可执行文件，并从**同一个 Release tag**安装完整的 Skill 目录到 Claude Code、Codex 与 Cursor。二进制和 Skill 因此保持版本一致。
 
 ```bash
 # linux
@@ -27,22 +27,59 @@ curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/i
 powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1 | iex"
 ```
 
-安装位置: linux 默认 `~/bin/volc-cli`(可用 `VOLC_CLI_INSTALL_DIR` 覆盖), windows 默认 `%LOCALAPPDATA%\volc-cli\volc-cli.exe`. 安装后请确认该目录在 PATH 中.
+安装位置：Linux/macOS 默认 `~/bin/volc-cli`（可用 `VOLC_CLI_INSTALL_DIR` 覆盖），Windows 默认 `%LOCALAPPDATA%\volc-cli\volc-cli.exe`。安装后请确认该目录在 PATH 中。
 
-脚本幂等: 重复运行会重新下载最新版覆盖旧版, 不会残留多余文件. 下载失败会明确报错并提示检查 <https://github.com/yangkushu/volc-cli/releases/latest>.
+支持的平台和架构：Linux、macOS、Windows 的 `amd64` 与 `arm64`。脚本会检测架构；如果对应 Release 资产不存在会明确失败。重复运行会升级到最新 Release。
 
-### 手动下载
+### 仅安装 CLI
 
-GitHub Release 页: <https://github.com/yangkushu/volc-cli/releases>, 按平台下载 `volc-cli-linux-amd64` / `volc-cli-windows-amd64.exe`, 放到 PATH 目录即可.
-
-### 手动安装 skills(可选, 不装不影响 CLI 使用)
+Skill 只是让 AI 知道何时及如何调用命令；只使用终端时无需安装 Skill。
 
 ```bash
-# linux / mac: 一条命令装到 Claude Code 与 Codex
-mkdir -p ~/.claude/skills/volc-cli ~/.codex/skills/volc-cli \
-  && curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/skills/volc-cli/SKILL.md -o ~/.claude/skills/volc-cli/SKILL.md \
-  && cp ~/.claude/skills/volc-cli/SKILL.md ~/.codex/skills/volc-cli/SKILL.md
+# Linux / macOS：跳过 Skill 安装
+curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.sh \
+  | VOLC_CLI_INSTALL_SKILL=0 bash
 ```
+
+```powershell
+# Windows PowerShell：跳过 Skill 安装
+$env:VOLC_CLI_INSTALL_SKILL = "0"
+irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1 | iex
+```
+
+也可以从 [GitHub Releases](https://github.com/yangkushu/volc-cli/releases) 手动下载。资产名为 `volc-cli-<linux|darwin|windows>-<amd64|arm64>`；Windows 文件带 `.exe` 后缀。
+
+### 仅安装 Skill
+
+仅安装 Skill 不会安装 `volc-cli` 二进制。AI 在调用前仍要求 `volc-cli` 已在 `PATH` 中；请先完成「完整安装」或「仅安装 CLI」。
+
+推荐使用 [skills CLI](https://github.com/vercel-labs/skills) 受管安装，它会维护 canonical copy 和 Agent 目录的链接：
+
+```bash
+npx skills add https://github.com/yangkushu/volc-cli \
+  --skill volc-cli \
+  --agent claude-code --agent codex --agent cursor \
+  --global --yes
+```
+
+此命令跟随仓库的最新 Skill。若要与已安装的某个 CLI Release 严格对应，请将 `<tag>` 替换为该 Release tag（例如 `v0.1.1`）：
+
+```bash
+npx skills add https://github.com/yangkushu/volc-cli/tree/<tag>/skills/volc-cli \
+  --skill volc-cli \
+  --agent claude-code --agent codex --agent cursor \
+  --global --yes
+```
+
+受管安装后请用 `npx skills update --global` 更新 Skill，不要再以手工 `curl` 覆盖该 Skill 目录。若链接异常，先运行 `npx skills list --global` 确认安装状态，再按其输出修复。
+
+### 安装模式速览
+
+| 场景 | CLI 二进制 | Claude Code / Codex / Cursor Skill |
+| --- | --- | --- |
+| 完整安装脚本 | 安装 | 安装，且与 Release tag 一致 |
+| `VOLC_CLI_INSTALL_SKILL=0` | 安装 | 不安装 |
+| `npx skills add ...` | 不安装 | 安装 |
 
 ### 源码编译
 
@@ -91,14 +128,15 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
 所有命令加 `--json` 切结构化输出.
 
-## AI skills(Claude Code / Codex)
+## AI Skill（Claude Code / Codex / Cursor）
 
-安装脚本会自动把 `skills/volc-cli` 安装到:
+完整安装脚本会把完整的 `skills/volc-cli` 目录安装到：
 
 - Claude Code: `~/.claude/skills/volc-cli/`
 - Codex: `~/.codex/skills/volc-cli/`
+- Cursor: `~/.cursor/skills/volc-cli/`
 
-装好后, 直接对 AI 说"查一下 oss 流水线最近为什么失败", AI 会调用 volc-cli 完成排查. 两者共用同一份 SKILL.md, 无需分别维护. 更新 skill 重跑安装脚本即可.
+通过 `npx skills` 安装时，它会维护共享副本与各 Agent 目录的链接；请使用该工具更新，避免混用两套安装方式。装好 CLI 与 Skill 后，直接对 AI 说“查一下 oss 流水线最近为什么失败”，AI 会调用 `volc-cli` 完成排查。
 
 ## 扩展新模块
 

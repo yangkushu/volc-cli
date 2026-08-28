@@ -1,6 +1,7 @@
 ---
 name: volc-cli
 description: 查询火山云持续交付(CodePipeline)流水线的运行记录与失败原因. 用于排查流水线构建/发布失败、查看某次发布的参数、或列出工作区全部流水线.
+allowed-tools: Bash(volc-cli:*)
 ---
 
 # volc-cli 流水线排查

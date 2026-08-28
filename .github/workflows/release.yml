@@ -1,6 +1,6 @@
 name: release
 
-# tag 推送自动构建 win/linux x64 并发布 Release
+# tag 推送自动构建 Linux/macOS/Windows 的 amd64、arm64 并发布 Release
 on:
   push:
     tags:
@@ -18,8 +18,20 @@ jobs:
           - goos: linux
             goarch: amd64
             ext: ""
+          - goos: linux
+            goarch: arm64
+            ext: ""
+          - goos: darwin
+            goarch: amd64
+            ext: ""
+          - goos: darwin
+            goarch: arm64
+            ext: ""
           - goos: windows
             goarch: amd64
+            ext: ".exe"
+          - goos: windows
+            goarch: arm64
             ext: ".exe"
     steps:
       - uses: actions/checkout@v4
