@@ -9,6 +9,7 @@ import (
 
 	"kuopin/volc-cli/internal/config"
 	"kuopin/volc-cli/internal/cpclient"
+	"kuopin/volc-cli/internal/opts"
 	"kuopin/volc-cli/internal/output"
 )
 
@@ -31,7 +32,7 @@ func NewCheckCredentialsCmd() *cobra.Command {
 			"2. 调用 ListPipelines 验证凭证真实有效(只读操作).\n" +
 			"region 固定 cn-north-1(持续交付仅北京 region).",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ak, sk := config.ResolveCredentials(globalOpts.AccessKey, globalOpts.SecretKey)
+			ak, sk := config.ResolveCredentials(opts.Global.AccessKey, opts.Global.SecretKey)
 			res := checkResult{Region: "cn-north-1"}
 			if ak == "" || sk == "" {
 				res.Error = fmt.Sprintf("AK/SK 未设置: 请用 --ak/--sk 指定或导出环境变量 %s/%s", envAK, envSK)
@@ -75,7 +76,7 @@ func contains(s string, subs ...string) bool {
 
 // finish 按 --json 或文本输出结果; Configured=false 或 Valid=false 时返回错误使退出码非 0.
 func finish(cmd *cobra.Command, res checkResult) error {
-	if globalOpts.JSON {
+	if opts.Global.JSON {
 		if err := output.PrintJSON(res); err != nil {
 			return err
 		}

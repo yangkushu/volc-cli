@@ -3,12 +3,14 @@ package cmd
 import (
 	"strings"
 	"testing"
+
+	"kuopin/volc-cli/internal/opts"
 )
 
 func TestCheckCredentialsMissing(t *testing.T) {
-	oldAK, oldSK := globalOpts.AccessKey, globalOpts.SecretKey
-	t.Cleanup(func() { globalOpts.AccessKey, globalOpts.SecretKey = oldAK, oldSK })
-	globalOpts.AccessKey, globalOpts.SecretKey = "", ""
+	oldAK, oldSK := opts.Global.AccessKey, opts.Global.SecretKey
+	t.Cleanup(func() { opts.Global.AccessKey, opts.Global.SecretKey = oldAK, oldSK })
+	opts.Global.AccessKey, opts.Global.SecretKey = "", ""
 	t.Setenv(envAK, "")
 	t.Setenv(envSK, "")
 
