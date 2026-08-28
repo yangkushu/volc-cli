@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 独立 CLI 工具 `volc-cli`, 通过火山云 Go SDK 查询持续交付(CodePipeline)流水线的发布记录与构建失败错误信息.
+**Goal:** 独立 CLI 工具 `volc-cli`, 通过火山云 Go SDK 查询持续交付(CodePipeline)流水线的发布记录与构建失败错误信息. 发布到 GitHub(git@github.com:yangkushu/volc-cli.git), tag 推送自动构建 win/linux x64 可执行文件, 提供一键安装脚本(自动下载对应平台最新版本 + 安装 Claude Code/Codex skills).
 
 **Architecture:** cobra 两级命令结构 `volc-cli <模块> <命令>`, 模块名与 SDK `service/` 包名对齐(`codepipeline`), 命令名与 OpenAPI Action 对齐(kebab-case). 内部按 `client`(SDK 封装)/`output`(渲染)/`cmd`(cobra 命令) 分层, 互不耦合.
 
@@ -22,6 +22,10 @@
 - AK/SK 值禁止打印到终端/日志/错误信息(只显示是否已设置与长度).
 - Go 源文件中文注释用半角标点.
 - commit message 中文, 简短明确.
+- GitHub 仓库: `git@github.com:yangkushu/volc-cli.git`, 工作流和安装脚本中的下载地址固定指向该仓库, 平台/二进制命名见 Task 10.
+- 本机没有 gh CLI, GitHub 操作(建 repo/默认分支)由人工完成; 推送与 PR 用 git 直接做.
+- 安装脚本幂等(重复运行不报错), 下载失败时给出明确错误与重试指引; 脚本内 curl 必须带 -fSsl 且失败即退出.
+- skills 目录名必须为 `volc-cli`(与 SKILL.md 的 name 一致, Claude Code/Codex 按目录发现 skill).
 
 ## SDK 关键事实(实现时直接引用, 无需再翻源码)
 
@@ -51,6 +55,12 @@ volc-cli/
 ├── go.mod                          # module kuopin/volc-cli
 ├── main.go                         # 入口: 调 cmd.Execute()
 ├── README.md                       # 安装/用法/WorkspaceId 获取指引
+├── .github/workflows/release.yml   # tag 推送自动构建 win/linux x64 并发布
+├── skills/
+│   └── volc-cli/SKILL.md           # Claude Code + Codex 共用 skill(--json + 错误自愈工作流)
+├── scripts/
+│   ├── install.sh                  # 自动下载指定平台最新可执行文件 + 安装 skills(幂等)
+│   └── install.ps1                 # 同上, Windows PowerShell 版
 ├── internal/
 │   ├── config/config.go            # 凭证与 workspace 解析(flag+env, 含敏感信息脱敏)
 │   ├── cpclient/client.go          # codePipeline SDK 封装(认证, API 调用)
@@ -1518,6 +1528,360 @@ git add README.md && git commit -m "docs: README 用法与扩展约定"
 
 ---
 
+### Task 10: GitHub 发布工作流(tag 触发构建 win/linux x64)
+
+**Files:**
+- Create: `.github/workflows/release.yml`
+
+**Interfaces:**
+- Consumes: 仓库 go.mod(module kuopin/volc-cli), 仓库地址 git@github.com:yangkushu/volc-cli.git.
+- Produces: tag `v*` 推送触发的工作流; 产出 `volc-cli-linux-amd64` 与 `volc-cli-windows-amd64.exe` 两个 Release 资产. Task 11 安装脚本的下载 URL 依赖本任务的资产命名.
+- 验收依赖: 需推 tag 到 GitHub 后由 Actions 实跑, 本机无法模拟; 静态校验(yaml 语法/资产名一致)完成后, 真实触发按"验证注意事项"交人工执行.
+
+- [ ] **Step 1: 写 .github/workflows/release.yml**
+
+```yaml
+name: release
+
+# tag 推送自动构建 win/linux x64 并发布 Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:   # 手动兜底(默认按 push 时的 ref 构建)
+
+permissions:
+  contents: write      # 上传 Release 资产所需
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: windows
+            goarch: amd64
+            ext: ".exe"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags "-s -w" -o "dist/volc-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}" .
+      - name: Upload binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/volc-cli-linux-amd64
+            dist/volc-cli-windows-amd64.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+```
+
+关键点:
+- 两平台同 job 分步构建(ubuntu runner 交叉编译, CGO_ENABLED=0 静态链接), 产物名 = `volc-cli-{goos}-{goarch}[-.exe]`, 与 Task 11 下载 URL 严格一致.
+- 每个 matrix 腿都会跑一次 Upload 步骤, 第二次 Upload 对同一 Release 幂等(softprops/action-gh-release 会复用 tag 对应的 release), 这是该 action 的已知用法, 无需合并步骤.
+- 不要加 checksum 步骤(安装脚本不校验, 避免多余机制).
+- workflow_dispatch 为可选配置: 若希望手动也能触发, 保留; 不想要可去掉.
+
+- [ ] **Step 2: 本地静态校验**
+
+```bash
+python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/release.yml'))" 2>/dev/null \
+  || echo "pyyaml 不可用, 用 go 校验" && go run github.com/goccy/go-yaml/cmd/yq@latest . .github/workflows/release.yml >/dev/null 2>&1 && echo yaml OK
+```
+
+Expected: yaml 语法合法. 资产名 `volc-cli-linux-amd64` / `volc-cli-windows-amd64.exe` 与 Task 11 脚本一致.
+
+- [ ] **Step 3: 验证注意事项(写进任务报告, 不实际执行)**
+
+以下步骤需要推 tag 到 GitHub(本机无法模拟 Actions 运行), 留待合并后由人工执行:
+
+1. `git tag v0.1.0 && git push origin v0.1.0`
+2. Actions 绿后检查 Release 页面: 两个资产存在且可下载
+3. Linux 下载后 `chmod +x && ./volc-cli-linux-amd64 --help` 可运行
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add .github && git commit -m "ci: tag 发布工作流(win/linux x64)"
+```
+
+---
+
+### Task 11: skills + 安装脚本(自动下载最新版 + 装 Claude Code/Codex skills)
+
+**Files:**
+- Create: `skills/volc-cli/SKILL.md`, `scripts/install.sh`, `scripts/install.ps1`
+- Modify: 无(README 由 Task 12 重写)
+
+**Interfaces:**
+- Consumes: Task 10 的 Release 资产名 `volc-cli-{os}-{arch}`, GitHub 仓库 yangkushu/volc-cli, CLI 的 `--json` 与命令面(见 Task 6-8).
+- Produces:
+  - `skills/volc-cli/SKILL.md` — Claude Code 与 Codex 共用的 skill(两者 skills 格式相同: SKILL.md + frontmatter).
+  - `scripts/install.sh` / `scripts/install.ps1` — 自动检测平台(win/linux)下载最新 release 可执行文件, 放到 `~/bin`(linux)/`~/AppData/Local/volc-cli`(win) 并写入 PATH 提示, 同时把 skills 目录安装到 `~/.claude/skills/volc-cli` 与 `~/.codex/skills/volc-cli`(已存在同名目录时覆盖内容, 幂等).
+- 安装脚本要求: curl 必须带 `-fSsl`, 下载失败即 `set -e` 退出并提示重试; 脚本可重复运行(幂等); Windows 版用 PowerShell 语法, 下载用 `Invoke-WebRequest`.
+
+- [ ] **Step 1: 写 skills/volc-cli/SKILL.md**
+
+```markdown
+---
+name: volc-cli
+description: 查询火山云持续交付(CodePipeline)流水线的发布记录与失败原因. 用于排查流水线构建/发布失败、查看某次发布的参数(DynamicEnvs)、或列出工作区全部流水线.
+---
+
+# volc-cli 流水线排查
+
+## 触发条件
+
+- 用户提到流水线/构建失败, 要查失败原因或错误日志
+- 用户要查某条流水线的发布记录、发布参数
+- 用户要列出火山云持续交付工作区的流水线
+
+## 前置要求
+
+- 已安装 volc-cli(见仓库 README 安装章节)
+- 环境变量已配置: `VOLC_ACCESSKEY`、`VOLC_SECRETKEY`、`VOLC_CP_WORKSPACE_ID`
+  (WorkspaceId 从控制台流水线 URL `/cp/workspace/{id}/pipeline/...` 获取)
+- 未配置时先跑 `volc-cli check-credentials` 看提示, 不要猜测
+
+## 操作流程
+
+1. 先看环境是否就绪: `volc-cli check-credentials`; 报错时按输出提示修复
+2. 查失败原因: `volc-cli codepipeline failures <流水线名或ID> [--page-size N]`
+   - 默认返回最后一次失败, 输出 stage→task→step 定位与错误信息、控制台 URL
+3. 查发布记录与参数: `volc-cli codepipeline list-pipeline-records <流水线名或ID> [--page-size N]`
+4. 列流水线(不知道名称/ID 时): `volc-cli codepipeline list-pipelines`
+5. 单条记录详情: `volc-cli codepipeline get-pipeline-record <流水线名或ID> --id <记录ID>`
+
+## 关键规则
+
+- 流水线定位失败(提示"未找到流水线")时, 先 `list-pipelines` 拿真实名称, 不要猜
+- 失败信息在 step 的 Result KV 里; 输出为空或只有"详见控制台日志"时, 把控制台 URL 给用户, 并说明完整日志在控制台
+- AK/SK 是敏感信息: 永远不要把 key 内容写进命令输出、日志或对话
+- 给用户排查结论时, 先给定位(stage/task/step), 再给错误原文, 最后给控制台链接
+```
+
+- [ ] **Step 2: 写 scripts/install.sh**
+
+```bash
+#!/usr/bin/env bash
+# volc-cli 一键安装: 下载最新 release 可执行文件 + 安装 Claude Code/Codex skills
+# 用法: curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.sh | bash
+set -euo pipefail
+
+REPO="yangkushu/volc-cli"
+BIN="volc-cli"
+API="https://api.github.com/repos/${REPO}/releases/latest"
+
+# 1. 平台检测(只支持 linux/windows x64)
+os="$(uname -s)"
+case "$os" in
+  Linux)  asset="volc-cli-linux-amd64" ;;
+  MINGW*|MSYS*|CYGWIN*) asset="volc-cli-windows-amd64.exe" ;;
+  *) echo "不支持的平台: $os (仅支持 linux/windows x64)" >&2; exit 1 ;;
+esac
+
+# 2. 下载最新 release
+url="$(curl -fsSL "$API" | sed -n "s/.*\"browser_download_url\": *\"\([^\"]*${asset}[^\"]*\)\".*/\1/p" | head -1)"
+if [ -z "$url" ]; then
+  echo "未找到资产 ${asset}, 请检查 https://github.com/${REPO}/releases/latest" >&2
+  exit 1
+fi
+install_dir="${VOLC_CLI_INSTALL_DIR:-$HOME/bin}"
+mkdir -p "$install_dir"
+tmp="$(mktemp)"
+curl -fSL -o "$tmp" "$url"
+chmod +x "$tmp"
+mv "$tmp" "$install_dir/$BIN"
+
+# 3. 安装 skills(claude code + codex 共用同一份 SKILL.md)
+skills_src="https://raw.githubusercontent.com/${REPO}/master/skills/volc-cli/SKILL.md"
+for dest in "$HOME/.claude/skills/volc-cli" "$HOME/.codex/skills/volc-cli"; do
+  mkdir -p "$dest"
+  curl -fSL -o "$dest/SKILL.md" "$skills_src"
+  echo "skill 已安装: $dest"
+done
+
+echo "✔ 安装完成: $install_dir/$BIN"
+echo "  请确认 $install_dir 在 PATH 中, 或执行: export PATH=\"$install_dir:\$PATH\""
+echo "  凭证配置: export VOLC_ACCESSKEY=... VOLC_SECRETKEY=... VOLC_CP_WORKSPACE_ID=..."
+echo "  验证: volc-cli check-credentials"
+```
+
+- [ ] **Step 3: 写 scripts/install.ps1**
+
+```powershell
+# volc-cli 一键安装(Windows): 下载最新 release + 安装 skills
+# 用法: powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1 | iex"
+$ErrorActionPreference = "Stop"
+
+$repo = "yangkushu/volc-cli"
+$api = "https://api.github.com/repos/$repo/releases/latest"
+$release = Invoke-RestMethod -Uri $api
+$asset = $release.assets | Where-Object { $_.name -eq "volc-cli-windows-amd64.exe" } | Select-Object -First 1
+if (-not $asset) {
+    Write-Error "未找到资产 volc-cli-windows-amd64.exe, 请检查 https://github.com/$repo/releases/latest"
+    exit 1
+}
+$installDir = if ($env:VOLC_CLI_INSTALL_DIR) { $env:VOLC_CLI_INSTALL_DIR } else { "$env:LOCALAPPDATA\volc-cli" }
+New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "$installDir\volc-cli.exe"
+
+$skillsSrc = "https://raw.githubusercontent.com/$repo/master/skills/volc-cli/SKILL.md"
+foreach ($dest in @("$HOME\.claude\skills\volc-cli", "$HOME\.codex\skills\volc-cli")) {
+    New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    Invoke-WebRequest -Uri $skillsSrc -OutFile "$dest\SKILL.md"
+    Write-Host "skill 已安装: $dest"
+}
+
+Write-Host "✔ 安装完成: $installDir\volc-cli.exe"
+Write-Host "  请将 $installDir 加入 PATH, 或使用完整路径调用"
+Write-Host "  凭证配置: setx VOLC_ACCESSKEY ... / setx VOLC_SECRETKEY ... / setx VOLC_CP_WORKSPACE_ID ..."
+Write-Host "  验证: volc-cli check-credentials"
+```
+
+- [ ] **Step 4: 本地校验(linux 部分, 不实际下载)**
+
+```bash
+bash -n scripts/install.sh && echo "install.sh 语法 OK"
+# 静态核对: 资产名与 release.yml 一致; skills 目标路径与 .claude/.codex 实际目录一致
+grep -c "volc-cli-linux-amd64" scripts/install.sh .github/workflows/release.yml
+grep -c "volc-cli-windows-amd64.exe" scripts/install.ps1 .github/workflows/release.yml
+```
+
+Expected: bash 语法合法; 两个资产名在脚本与 workflow 中各出现且一致.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add skills scripts && git commit -m "feat: skills 与一键安装脚本(claude code/codex)"
+```
+
+---
+
+### Task 12: README(安装说明 + skills 说明)
+
+**Files:**
+- Modify: `README.md`(Task 9 已创建, 本任务全量重写: 安装章节改为安装脚本方式, 增加 skills 章节)
+
+**Interfaces:**
+- Consumes: Task 9 的命令用法内容(保留), Task 10 的 release 资产名, Task 11 的安装脚本.
+- Produces: 面向使用者的 README: 一键安装(自动下载指定平台最新可执行文件 + 安装 AI skills)、凭证配置、命令用法、skills 使用方式.
+
+- [ ] **Step 1: 重写 README.md**
+
+```markdown
+# volc-cli
+
+火山云(Volcengine) CLI 工具. 命令结构与官方 Go SDK 对齐:
+
+    volc-cli <模块> <命令>
+
+- 模块名 = SDK `service/` 包名小写(如 `codepipeline`)
+- 命令名 = OpenAPI Action 转 kebab-case(如 `ListPipelines` → `list-pipelines`)
+- flag 名 = SDK 请求字段转 kebab-case(如 `--workspace-id`)
+- `--json` 输出字段名与 SDK json tag 一致(保持大写)
+
+## 安装
+
+### 一键安装(推荐)
+
+自动下载指定平台的最新可执行文件, 并安装 Claude Code / Codex 的 skills:
+
+```bash
+# linux
+curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.sh | bash
+
+# windows(powershell)
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1 | iex"
+```
+
+安装位置: linux 默认 `~/bin/volc-cli`(可用 `VOLC_CLI_INSTALL_DIR` 覆盖), windows 默认 `%LOCALAPPDATA%\volc-cli\volc-cli.exe`. 安装后请确认该目录在 PATH 中.
+
+### 手动下载
+
+GitHub Release 页: <https://github.com/yangkushu/volc-cli/releases>, 按平台下载 `volc-cli-linux-amd64` / `volc-cli-windows-amd64.exe`, 放到 PATH 目录即可.
+
+## 凭证
+
+优先级: flag > 环境变量.
+
+    export VOLC_ACCESSKEY=AKxxx
+    export VOLC_SECRETKEY=SKxxx
+    export VOLC_CP_WORKSPACE_ID=从控制台流水线 URL 获取(/cp/workspace/{id}/pipeline/...)
+
+验证:
+
+    volc-cli check-credentials
+
+region 固定 cn-north-1(持续交付仅北京 region).
+
+## 持续交付(codepipeline)
+
+    # 流水线列表
+    volc-cli codepipeline list-pipelines
+
+    # 发布记录(含每次发布的参数 DynamicEnvs)
+    volc-cli codepipeline list-pipeline-records <流水线名或ID> --page-size 10
+
+    # 单条记录详情(失败步骤展开错误信息)
+    volc-cli codepipeline get-pipeline-record <流水线名或ID> --id <记录ID>
+
+    # 最近一次失败(默认)/最近 N 次失败: stage→task→step 定位 + 错误信息 + 控制台 URL
+    volc-cli codepipeline failures <流水线名或ID> [--page-size N]
+
+所有命令加 `--json` 切结构化输出.
+
+## AI skills(Claude Code / Codex)
+
+安装脚本会自动把 `skills/volc-cli` 安装到:
+
+- Claude Code: `~/.claude/skills/volc-cli/`
+- Codex: `~/.codex/skills/volc-cli/`
+
+装好后, 直接对 AI 说"查一下 oss 流水线最近为什么失败", AI 会调用 volc-cli 完成排查. 两者共用同一份 SKILL.md, 无需分别维护.
+
+## 扩展新模块
+
+1. `internal/<module>client/` 封装对应 SDK service 包(参照 cpclient)
+2. `internal/cmd/<module>/` 建子命令组, 命令名/flag 名按上述对齐规则
+3. `internal/cmd/root.go` AddCommand 一行挂载
+
+## 维护约定
+
+- 修改命令行为时同步更新其 Short/Long(flag 用法), --help 由 cobra 自动生成, 与代码同源.
+- 新增 SDK 方法封装时命令名与 flag 名照 SDK 抄, 不自造名.
+- 新增模块/命令后, 同步更新 `skills/volc-cli/SKILL.md` 的操作流程与 README 用法.
+```
+
+- [ ] **Step 2: 链接检查**
+
+```bash
+# 仓库内引用的路径都应存在
+test -f skills/volc-cli/SKILL.md && test -f scripts/install.sh && test -f scripts/install.ps1 && test -f .github/workflows/release.yml && echo OK
+```
+
+Expected: OK.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add README.md && git commit -m "docs: README 安装说明与 skills 用法"
+```
+
+---
+
 ## 验收清单(整体)
 
 - [ ] `volc-cli --help` / 各级 `--help` 可用且与行为一致
@@ -1526,3 +1890,7 @@ git add README.md && git commit -m "docs: README 用法与扩展约定"
 - [ ] `list-pipelines` / `list-pipeline-records`(含 DynamicEnvs) / `get-pipeline-record` / `failures` 在真实环境可用
 - [ ] `--json` 输出字段名与 SDK json tag 一致
 - [ ] `go test ./...` 全绿
+- [ ] release.yml 资产名与安装脚本下载 URL 一致(win/linux x64)
+- [ ] 安装脚本幂等且失败即退出(linux 本地可跑 bash -n + 静态核对; 真实下载需 GitHub 首个 release 后人工验证)
+- [ ] skills 目录结构与 SKILL.md frontmatter 符合 Claude Code/Codex 约定
+- [ ] README 安装说明覆盖 linux/windows 一键安装与 skills 说明
