@@ -1,5 +1,9 @@
-# volc-cli 一键安装(Windows): 下载最新 release + 安装 Agent Skills
+# volc-cli Release 安装器(Windows): 默认安装 CLI；-WithSkill 同时安装 Agent Skill
 # 用法: powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1 | iex"
+param(
+    [switch]$WithSkill
+)
+
 $ErrorActionPreference = "Stop"
 
 $repo = "yangkushu/volc-cli"
@@ -38,7 +42,7 @@ if ($resp.StatusCode -ne 200) {
     exit 1
 }
 
-if ($env:VOLC_CLI_INSTALL_SKILL -ne "0") {
+if ($WithSkill) {
     # 从与二进制相同的 Release tag 下载完整目录，避免 Skill 版本漂移。
     $stage = Join-Path ([System.IO.Path]::GetTempPath()) ("volc-cli-skill-" + [guid]::NewGuid())
     $archive = Join-Path $stage "source.zip"
@@ -67,3 +71,6 @@ Write-Host "✔ 安装完成: $installDir\volc-cli.exe ($($release.tag_name))"
 Write-Host "  请将 $installDir 加入 PATH, 或使用完整路径调用"
 Write-Host "  凭证配置: setx VOLC_ACCESSKEY ... / setx VOLC_SECRETKEY ..."
 Write-Host "  验证: volc-cli check-credentials"
+if (-not $WithSkill) {
+    Write-Host "  如需安装 Agent Skill，请执行 README 中的 npx skills 命令，或以 -WithSkill 运行本脚本。"
+}

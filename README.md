@@ -15,9 +15,9 @@
 
 ## 安装
 
-### 完整安装：CLI + Skill（推荐）
+### 安装 CLI（Release 脚本，推荐）
 
-自动下载最新 Release 的可执行文件，并从**同一个 Release tag**安装完整的 Skill 目录到 Claude Code、Codex 与 Cursor。二进制和 Skill 因此保持版本一致。
+自动下载最新 Release 的可执行文件。脚本默认只安装 CLI，不修改 Claude Code、Codex 或 Cursor 的 Skill 配置。
 
 ```bash
 # linux
@@ -31,27 +31,28 @@ powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.c
 
 支持的平台和架构：Linux、macOS、Windows 的 `amd64` 与 `arm64`。脚本会检测架构；如果对应 Release 资产不存在会明确失败。重复运行会升级到最新 Release。
 
-### 仅安装 CLI
+也可以从 [GitHub Releases](https://github.com/yangkushu/volc-cli/releases) 手动下载。资产名为 `volc-cli-<linux|darwin|windows>-<amd64|arm64>`；Windows 文件带 `.exe` 后缀。
 
-Skill 只是让 AI 知道何时及如何调用命令；只使用终端时无需安装 Skill。
+### 安装 CLI + Skill（可选）
+
+如需方便地一次安装 CLI 与 Claude Code、Codex、Cursor 的 Skill，可传入显式参数。Skill 从与二进制相同的 Release tag 提取，因此两者版本一致。
 
 ```bash
-# Linux / macOS：跳过 Skill 安装
+# Linux / macOS
 curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.sh \
-  | VOLC_CLI_INSTALL_SKILL=0 bash
+  | bash -s -- --with-skill
 ```
 
 ```powershell
-# Windows PowerShell：跳过 Skill 安装
-$env:VOLC_CLI_INSTALL_SKILL = "0"
-irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1 | iex
+# Windows PowerShell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.ps1))) -WithSkill
 ```
 
-也可以从 [GitHub Releases](https://github.com/yangkushu/volc-cli/releases) 手动下载。资产名为 `volc-cli-<linux|darwin|windows>-<amd64|arm64>`；Windows 文件带 `.exe` 后缀。
+这是便捷安装方式。若已使用 `npx skills` 管理 Skill，请不要混用此方式更新 Skill。
 
 ### 仅安装 Skill
 
-仅安装 Skill 不会安装 `volc-cli` 二进制。AI 在调用前仍要求 `volc-cli` 已在 `PATH` 中；请先完成「完整安装」或「仅安装 CLI」。
+仅安装 Skill 不会安装 `volc-cli` 二进制。AI 在调用前仍要求 `volc-cli` 已在 `PATH` 中；请先完成「安装 CLI」。
 
 推荐使用 [skills CLI](https://github.com/vercel-labs/skills) 受管安装，它会维护 canonical copy 和 Agent 目录的链接：
 
@@ -77,8 +78,8 @@ npx skills add https://github.com/yangkushu/volc-cli/tree/<tag>/skills/volc-cli 
 
 | 场景 | CLI 二进制 | Claude Code / Codex / Cursor Skill |
 | --- | --- | --- |
-| 完整安装脚本 | 安装 | 安装，且与 Release tag 一致 |
-| `VOLC_CLI_INSTALL_SKILL=0` | 安装 | 不安装 |
+| Release 安装脚本（默认） | 安装 | 不安装 |
+| Release 安装脚本 + `--with-skill` / `-WithSkill` | 安装 | 安装，且与 Release tag 一致 |
 | `npx skills add ...` | 不安装 | 安装 |
 
 ### 源码编译
@@ -130,7 +131,7 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
 ## AI Skill（Claude Code / Codex / Cursor）
 
-完整安装脚本会把完整的 `skills/volc-cli` 目录安装到：
+Release 安装脚本传入 `--with-skill`（PowerShell 为 `-WithSkill`）时，会把完整的 `skills/volc-cli` 目录安装到：
 
 - Claude Code: `~/.claude/skills/volc-cli/`
 - Codex: `~/.codex/skills/volc-cli/`

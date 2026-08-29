@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
-# volc-cli 一键安装: 下载最新 release 可执行文件 + 安装 Agent Skills
-# 用法: curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.sh | bash
+# volc-cli Release 安装器: 默认安装 CLI；--with-skill 同时安装 Agent Skill
+# 用法: curl -fsSL https://raw.githubusercontent.com/yangkushu/volc-cli/master/scripts/install.sh | bash -s -- [--with-skill]
 set -euo pipefail
 
 REPO="yangkushu/volc-cli"
 API="https://api.github.com/repos/${REPO}/releases/latest"
+
+install_skill=0
+case "${1:-}" in
+  "") ;;
+  --with-skill) install_skill=1 ;;
+  -h|--help)
+    echo "用法: install.sh [--with-skill]"
+    echo "默认只安装 volc-cli；--with-skill 额外安装 Claude Code、Codex、Cursor Skill。"
+    exit 0
+    ;;
+  *)
+    echo "未知参数: $1（仅支持 --with-skill）" >&2
+    exit 1
+    ;;
+esac
 
 # 1. 平台与架构检测
 os="$(uname -s)"
@@ -45,8 +60,8 @@ curl -fSL -o "$tmp" "$url"
 chmod +x "$tmp"
 mv "$tmp" "$install_dir/$bin"
 
-# 3. 安装完整 Skill 目录。设 VOLC_CLI_INSTALL_SKILL=0 可只安装 CLI。
-if [ "${VOLC_CLI_INSTALL_SKILL:-1}" != "0" ]; then
+# 3. 可选：安装完整 Skill 目录。
+if [ "$install_skill" = "1" ]; then
   skill_stage="$(mktemp -d)"
   cleanup() { rm -f "$tmp"; rm -rf "$skill_stage"; }
   curl -fsSL "https://github.com/${REPO}/archive/refs/tags/${tag}.tar.gz" | tar -xzf - -C "$skill_stage"
@@ -67,3 +82,6 @@ echo "✔ 安装完成: $install_dir/$bin (${tag})"
 echo "  请确认 $install_dir 在 PATH 中, 或执行: export PATH=\"$install_dir:\$PATH\""
 echo "  凭证配置: export VOLC_ACCESSKEY=... VOLC_SECRETKEY=..."
 echo "  验证: volc-cli check-credentials"
+if [ "$install_skill" = "0" ]; then
+  echo "  如需安装 Agent Skill，请执行 README 中的 npx skills 命令，或重跑本脚本并传入 --with-skill。"
+fi
