@@ -5,8 +5,8 @@ import (
 )
 
 func TestResolveCredentialsFlagWins(t *testing.T) {
-	t.Setenv("VOLC_ACCESSKEY", "env-ak")
-	t.Setenv("VOLC_SECRETKEY", "env-sk")
+	t.Setenv("VOLC_ACCESS_KEY", "env-ak")
+	t.Setenv("VOLC_SECRET_KEY", "env-sk")
 	ak, sk := ResolveCredentials("flag-ak", "flag-sk")
 	if ak != "flag-ak" || sk != "flag-sk" {
 		t.Errorf("flag 应优先, got ak=%q sk=%q", ak, sk)
@@ -14,8 +14,8 @@ func TestResolveCredentialsFlagWins(t *testing.T) {
 }
 
 func TestResolveCredentialsEnvFallback(t *testing.T) {
-	t.Setenv("VOLC_ACCESSKEY", "env-ak")
-	t.Setenv("VOLC_SECRETKEY", "env-sk")
+	t.Setenv("VOLC_ACCESS_KEY", "env-ak")
+	t.Setenv("VOLC_SECRET_KEY", "env-sk")
 	ak, sk := ResolveCredentials("", "")
 	if ak != "env-ak" || sk != "env-sk" {
 		t.Errorf("env 应兜底, got ak=%q sk=%q", ak, sk)

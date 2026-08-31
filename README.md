@@ -95,8 +95,8 @@ cd volc-cli && go build -o volc-cli .
 
 优先级: flag > 环境变量.
 
-    export VOLC_ACCESSKEY=AKxxx
-    export VOLC_SECRETKEY=SKxxx
+    export VOLC_ACCESS_KEY=AKxxx
+    export VOLC_SECRET_KEY=SKxxx
 
 WorkspaceId 无需手动配置: 命令会通过 `ListWorkspaces` 自动解析(账户下唯一工作区直接用; 多个工作区时按提示用 `--workspace-id` 指定).
 

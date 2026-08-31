@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	envAK = "VOLC_ACCESSKEY"
-	envSK = "VOLC_SECRETKEY"
+	envAK = "VOLC_ACCESS_KEY"
+	envSK = "VOLC_SECRET_KEY"
 	envWs = "VOLC_CP_WORKSPACE_ID"
 )
 

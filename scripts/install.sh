@@ -80,7 +80,7 @@ fi
 
 echo "✔ 安装完成: $install_dir/$bin (${tag})"
 echo "  请确认 $install_dir 在 PATH 中, 或执行: export PATH=\"$install_dir:\$PATH\""
-echo "  凭证配置: export VOLC_ACCESSKEY=... VOLC_SECRETKEY=..."
+echo "  凭证配置: export VOLC_ACCESS_KEY=... VOLC_SECRET_KEY=..."
 echo "  验证: volc-cli check-credentials"
 if [ "$install_skill" = "0" ]; then
   echo "  如需安装 Agent Skill，请执行 README 中的 npx skills 命令，或重跑本脚本并传入 --with-skill。"

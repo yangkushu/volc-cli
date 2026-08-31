@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	EnvAccessKey   = "VOLC_ACCESSKEY"
-	EnvSecretKey   = "VOLC_SECRETKEY"
+	EnvAccessKey   = "VOLC_ACCESS_KEY"
+	EnvSecretKey   = "VOLC_SECRET_KEY"
 	EnvWorkspaceId = "VOLC_CP_WORKSPACE_ID"
 )
 

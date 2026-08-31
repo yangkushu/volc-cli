@@ -52,7 +52,7 @@ volc-cli/
 
 ## 全局约束
 
-- 凭证读取优先级: `--ak/--sk` flag > 环境变量 `VOLC_ACCESSKEY`/`VOLC_SECRETKEY`(SDK 会话默认凭证链读取的名字)
+- 凭证读取优先级: `--ak/--sk` flag > 环境变量 `VOLC_ACCESS_KEY`/`VOLC_SECRET_KEY`(SDK 会话默认凭证链读取的名字)
 - WorkspaceId 优先级: `--workspace-id` flag > 环境变量(兼容旧配置); 两者都缺省时各命令自动调 ListWorkspaces 解析(唯一工作区直接用, 多个工作区报错列出候选)
 - region 固定 `cn-north-1`(持续交付仅北京 region), 不加 `--region` flag
 - **AK/SK 值禁止打印**到终端/日志/错误信息, 只显示是否已设置与长度(`config.MaskSecret`); 回显外部错误原文前须用 `scrubSecret` 过滤密钥值
