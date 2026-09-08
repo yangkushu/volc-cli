@@ -52,6 +52,7 @@ volc-cli/
 
 ## 全局约束
 
+- Agent 涉及线上修改必须获得用户对具体目标和操作的明确确认, 包括触发/重跑发布等间接修改; 具体边界见 [Skill 线上修改确认规则](skills/volc-cli/SKILL.md#线上修改确认). 当前命令仅检查凭证或查询; 未来新增写操作时须落实确认流程, 不得把工具权限或 `--yes` 视为用户确认, 并同步 Skill 与 CLI 帮助.
 - 凭证读取优先级: `--ak/--sk` flag > 环境变量 `VOLC_ACCESS_KEY`/`VOLC_SECRET_KEY`(SDK 会话默认凭证链读取的名字)
 - WorkspaceId 优先级: `--workspace-id` flag > 环境变量(兼容旧配置); 两者都缺省时各命令自动调 ListWorkspaces 解析(唯一工作区直接用, 多个工作区报错列出候选)
 - region 固定 `cn-north-1`(持续交付仅北京 region), 不加 `--region` flag

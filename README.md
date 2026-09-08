@@ -131,6 +131,10 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
 ## AI Skill（Claude Code / Codex / Cursor）
 
+Agent 使用 Skill 或 CLI 涉及线上/生产环境修改时, 必须先说明目标、操作和预期影响, 并获得用户明确确认. 发布、重跑发布流水线、回滚等间接修改也适用; 环境不明时先核实, 仍不明确则暂停修改并询问. 笼统的“修好它”、工具权限或 `--yes` 不代替确认. 已明确确认的同一操作无需重复询问, 范围变化须重新确认. 只读查询无需此类确认. 完整规则见 [SKILL.md](skills/volc-cli/SKILL.md#线上修改确认).
+
+当前 CLI 仅提供凭证检查与查询命令; 上述规则是 Agent 操作约束, CLI 帮助会提示该要求, 并非运行时审批机制.
+
 Release 安装脚本传入 `--with-skill`（PowerShell 为 `-WithSkill`）时，会把完整的 `skills/volc-cli` 目录安装到：
 
 - Claude Code: `~/.claude/skills/volc-cli/`
