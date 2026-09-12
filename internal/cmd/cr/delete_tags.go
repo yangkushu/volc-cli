@@ -63,6 +63,11 @@ func newDeleteTagsCmd() *cobra.Command {
 				if err != nil {
 					// 失败批次本身未删除, 未执行清单从本批起算
 					remaining = names[i:]
+					if opts.Global.JSON {
+						// JSON 模式不再打印文本进度, 进度并入错误信息
+						return fmt.Errorf("第 %d 批(共 %d 批)请求失败, 已删除 %d 个, 未执行 %d 个: %w", i/deleteTagBatch+1,
+							(len(names)+deleteTagBatch-1)/deleteTagBatch, len(deleted), len(remaining), err)
+					}
 					_ = output.PrintDeleteTagsResult(deleted, remaining, failures)
 					return fmt.Errorf("第 %d 批(共 %d 批)请求失败: %w", i/deleteTagBatch+1,
 						(len(names)+deleteTagBatch-1)/deleteTagBatch, err)
@@ -73,10 +78,16 @@ func newDeleteTagsCmd() *cobra.Command {
 				failures = append(failures, resp.Failures...)
 			}
 			if opts.Global.JSON {
-				return output.PrintJSON(map[string]any{
+				if err := output.PrintJSON(map[string]any{
 					"Registry": registry, "Namespace": dtNamespace, "Repository": dtRepository,
 					"Deleted": deleted, "Failures": failures, "Remaining": remaining,
-				})
+				}); err != nil {
+					return err
+				}
+				if len(failures) > 0 {
+					return fmt.Errorf("%d 个版本删除失败(见输出 Failures 字段)", len(failures))
+				}
+				return nil
 			}
 			if err := output.PrintDeleteTagsResult(deleted, remaining, failures); err != nil {
 				return err
