@@ -33,7 +33,7 @@ func newListTagsCmd() *cobra.Command {
 		Use:   "list-tags",
 		Short: "ListTags: 列出制品仓库全部版本",
 		Long: "ListTags: 列出制品仓库全部版本 tag(自动翻页拉全).\n" +
-			"--repository 必填; 省略时遍历 --namespace 下全部制品仓库(只读聚合).\n\n" +
+			"--namespace 必填; --repository 可省略, 省略时遍历该命名空间下全部制品仓库(只读聚合).\n\n" +
 			"以下为清理候选过滤参数(客户端语义, 非 API 字段, 多条件交集):\n" +
 			"  --older-than 30d   PushTime 早于 N 天前(支持 Nd/Nh)\n" +
 			"  --keep-last 10      按 PushTime 降序保留最近 N 个, 其余为候选\n" +

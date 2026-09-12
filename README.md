@@ -5,6 +5,7 @@
     volc-cli <模块> <命令>
 
 - 模块名 = SDK `service/` 包名小写(如 `codepipeline` = service/cp, 持续交付)
+- 镜像仓库(cr)模块对应 SDK `service/cr`(API 版本 2022-05-12), 命令如 `ListRegistries` → `list-registries`
 - 命令名 = OpenAPI Action 转 kebab-case(如 `ListPipelines` → `list-pipelines`)
 - flag 名 = API 请求字段转 kebab-case(如 `--workspace-id`)
 - `--json` 输出字段名与 SDK 结构一致
@@ -128,6 +129,51 @@ region 固定 cn-north-1(持续交付仅北京 region).
     volc-cli codepipeline failures <流水线名或ID> [--page-size N] [--tail N]
 
 所有命令加 `--json` 切结构化输出.
+
+## 镜像仓库(cr)
+
+对应镜像仓库 OpenAPI(API 版本 2022-05-12). 模块级 flag 对全部子命令生效:
+
+    --region    实例所在 region. 优先级: --region flag > 环境变量 VOLC_CR_REGION > 默认 cn-north-1
+    --registry  镜像仓库实例名. 未指定时自动解析: 当前 region 唯一实例直接用; 多实例报错列出候选, 可先跑 list-registries 查看
+
+    # 列出当前 region 全部镜像仓库实例(无实例时检查 --region)
+    volc-cli cr list-registries
+
+    # 列出实例下全部命名空间
+    volc-cli cr list-namespaces
+
+    # 列出命名空间下全部 OCI 制品仓库(--namespace 支持逗号分隔多个, 省略时列出全部)
+    volc-cli cr list-repositories [--namespace N]
+
+    # 列出制品仓库全部版本(--repository 省略时遍历该命名空间下全部仓库, 只读聚合)
+    volc-cli cr list-tags --namespace N [--repository X]
+
+    # 删除指定版本(必须显式列表 + --yes, 不可恢复)
+    volc-cli cr delete-tags --namespace N --repository X --tags t1,t2 --yes
+
+清理候选过滤(list-tags 客户端交集过滤, 非 API 字段; 命中项带 REASON 列):
+
+    --older-than 30d   PushTime 早于 N 天前(支持 Nd/Nh)
+    --keep-last 10     每个仓库按 PushTime 降序保留最近 N 个, 其余为候选
+    --tag-prefix ci-   tag 名前缀匹配
+    --tag-names t1,t2  tag 名精确匹配
+
+清理过期版本是两步流, CLI 不做自动批量删除:
+
+    # 第一步: 圈候选(只读)
+    volc-cli cr list-tags --namespace N --repository X --older-than 30d --keep-last 10
+
+    # 第二步: 人工确认候选清单后, 对显式列表执行删除
+    volc-cli cr delete-tags --namespace N --repository X --tags t1,t2 --yes
+
+删除安全说明:
+
+- `delete-tags` 必须显式给出逗号分隔的 `--tags` 精确列表并加 `--yes`, 缺一即报错退出, 不做任何自动圈定
+- 删除不可恢复; 超过 20 个自动分批调用, 请求级失败即止并报告进度, 逐条失败不影响其余, 存在失败时以非零码退出并输出已删除/失败/未执行清单
+- PushTime 无法解析(表格显示"(未知)")的版本永不进入清理候选(宁漏删不错删), 需人工单独处置
+
+所有命令加 `--json` 切结构化输出(list-tags 多仓库聚合时 JSON 按仓库分组).
 
 ## AI Skill（Claude Code / Codex / Cursor）
 
