@@ -52,4 +52,4 @@ allowed-tools: Bash(volc-cli:*)
 - AK/SK 是敏感信息: 永远不要把 key 内容写进命令输出、日志或对话
 - 给用户排查结论时, 先给定位(stage/task/step), 再给错误日志原文, 最后给控制台链接
 - cr 删除必须基于用户确认过的显式 tag 列表(`--tags`), 不做自动批量删除; 先 list-tags 圈候选再人工确认
-- PushTime 显示"未知"的版本不参与 older-than/keep-last 候选(宁漏删不错删), 处置需用户单独确认
+- PushTime 显示"(未知)"的版本不参与 older-than/keep-last 候选(宁漏删不错删), 处置需用户单独确认
