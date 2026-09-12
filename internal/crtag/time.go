@@ -3,6 +3,7 @@ package crtag
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 var olderThanRe = regexp.MustCompile(`^(\d+)([dh])$`)
 
 // ParseOlderThan 解析 --older-than 参数, 仅支持 Nd(天)/Nh(小时), 如 30d/12h.
+// 数值上限为不使 time.Duration(int64 纳秒)溢出的最大值, 超限报错, 防止回绕为负值.
 func ParseOlderThan(s string) (time.Duration, error) {
 	m := olderThanRe.FindStringSubmatch(s)
 	if m == nil {
@@ -19,6 +21,13 @@ func ParseOlderThan(s string) (time.Duration, error) {
 	n, err := strconv.Atoi(m[1])
 	if err != nil {
 		return 0, fmt.Errorf("--older-than 数字非法: %q", s)
+	}
+	limit := int64(math.MaxInt64 / int64(time.Hour)) // 最大小时数, 约 2562047
+	if m[2] == "d" {
+		limit /= 24 // 折算为天数, 约 106751
+	}
+	if int64(n) > limit {
+		return 0, fmt.Errorf("--older-than 数值过大: %q, 上限 %d%s", s, limit, m[2])
 	}
 	d := time.Duration(n) * time.Hour
 	if m[2] == "d" {

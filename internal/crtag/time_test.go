@@ -23,6 +23,8 @@ func TestParseOlderThan(t *testing.T) {
 		{"-1d", 0, true},
 		{"", 0, true},
 		{"3.5d", 0, true},
+		{"999999d", 0, true},
+		{"999999999h", 0, true},
 	}
 	for _, c := range cases {
 		got, err := ParseOlderThan(c.in)
@@ -60,6 +62,8 @@ func TestParsePushTime(t *testing.T) {
 		{"", time.Time{}, false},
 		{"not-a-time", time.Time{}, false},
 		{"2026-09-01", time.Time{}, false},
+		{"0", time.Time{}, false},
+		{"-5", time.Time{}, false},
 	}
 	for _, c := range cases {
 		got, ok := ParsePushTime(c.in)
