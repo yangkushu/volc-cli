@@ -20,8 +20,9 @@ type Criteria struct {
 
 // TagView 单个 tag 的过滤结果视图.
 type TagView struct {
-	Tag    *cr.ItemForListTagsOutput
-	Reason string // 命中规则串(如 "older-than:720h+beyond-keep-last:10"), 无过滤条件时为空
+	Tag        *cr.ItemForListTagsOutput
+	Repository string // 填充方为 cmd 层
+	Reason     string // 命中规则串(如 "older-than:720h+beyond-keep-last:10"), 无过滤条件时为空
 }
 
 // Filter 按 Criteria 圈定候选 tag(交集语义), 保持输入顺序.
