@@ -10,6 +10,7 @@ const (
 	EnvAccessKey   = "VOLC_ACCESS_KEY"
 	EnvSecretKey   = "VOLC_SECRET_KEY"
 	EnvWorkspaceId = "VOLC_CP_WORKSPACE_ID"
+	EnvCRRegion    = "VOLC_CR_REGION"
 )
 
 // ResolveCredentials 返回生效的 AK/SK: flag 非空优先, 否则读环境变量.
@@ -44,4 +45,18 @@ func MaskSecret(s string) string {
 		return "未设置"
 	}
 	return fmt.Sprintf("*** (len=%d)", len(s))
+}
+
+// DefaultCRRegion cr 模块默认 region(与 codepipeline 默认 region 一致).
+const DefaultCRRegion = "cn-north-1"
+
+// ResolveRegion 返回 cr 模块生效的 region: flag 非空优先, 其次环境变量, 默认 cn-north-1.
+func ResolveRegion(flagVal string) string {
+	if flagVal != "" {
+		return flagVal
+	}
+	if v := os.Getenv(EnvCRRegion); v != "" {
+		return v
+	}
+	return DefaultCRRegion
 }

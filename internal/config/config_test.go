@@ -40,3 +40,17 @@ func TestResolveWorkspaceIdMissing(t *testing.T) {
 		t.Error("未设置 workspace 应报错")
 	}
 }
+
+func TestResolveRegion(t *testing.T) {
+	t.Setenv(EnvCRRegion, "")
+	if got := ResolveRegion(""); got != "cn-north-1" {
+		t.Errorf("默认 region 应为 cn-north-1, got %s", got)
+	}
+	t.Setenv(EnvCRRegion, "cn-shanghai")
+	if got := ResolveRegion(""); got != "cn-shanghai" {
+		t.Errorf("环境变量应生效, got %s", got)
+	}
+	if got := ResolveRegion("cn-guangzhou"); got != "cn-guangzhou" {
+		t.Errorf("flag 应优先, got %s", got)
+	}
+}

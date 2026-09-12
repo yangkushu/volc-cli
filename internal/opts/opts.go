@@ -7,6 +7,8 @@ type Opts struct {
 	SecretKey   string
 	WorkspaceId string
 	JSON        bool
+	Region      string // cr 模块 region(cr 组 persistent flag 绑定)
+	Registry    string // cr 模块实例名(cr 组 persistent flag 绑定, 空则自动解析)
 }
 
 // Global 由 root 命令绑定 flag 后填充, 各子模块命令在此读取.
