@@ -27,7 +27,7 @@ func NewCRCmd() *cobra.Command {
 			"删除是不可恢复的线上修改: Agent 调用前必须向用户说明目标与影响并获得明确确认.",
 	}
 	pf := c.PersistentFlags()
-	pf.StringVar(&opts.Global.Region, "region", "", "实例所在 region, 默认读环境变量 VOLC_CR_REGION 或 cn-north-1")
+	pf.StringVar(&opts.Global.Region, "region", "", "实例所在 region, 默认读环境变量 VOLC_CR_REGION 或 cn-beijing")
 	pf.StringVar(&opts.Global.Registry, "registry", "", "镜像仓库实例名, 未指定时自动解析(唯一实例直接用, 多实例报错列出候选)")
 	c.AddCommand(newListRegistriesCmd(), newListNamespacesCmd(), newListRepositoriesCmd(),
 		newListTagsCmd(), newDeleteTagsCmd())

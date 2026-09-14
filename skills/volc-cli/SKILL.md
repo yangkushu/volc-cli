@@ -37,7 +37,7 @@ allowed-tools: Bash(volc-cli:*)
 4. 查指定运行的 step 日志: `volc-cli codepipeline get-task-run-log <流水线名或ID> --run-id <运行ID> [--tail N]`
 5. 列流水线(不知道名称/ID 时): `volc-cli codepipeline list-pipelines`
 6. 列工作区(不知道 WorkspaceId 时): `volc-cli codepipeline list-workspaces`
-7. 镜像仓库查询: `volc-cli cr list-registries`(region 默认 cn-north-1, 用 --region 切换)
+7. 镜像仓库查询: `volc-cli cr list-registries`(region 默认 cn-beijing, 实例如在其他 region 用 --region 或 VOLC_CR_REGION 切换)
 8. 列命名空间/仓库/版本: `volc-cli cr list-namespaces` / `list-repositories --namespace N` / `list-tags --namespace N [--repository X]`
 9. 清理过期版本(两步, 不自动批量删):
    - 圈候选: `volc-cli cr list-tags --namespace N [--repository X] --older-than 30d [--keep-last 10] [--tag-prefix ci-]`

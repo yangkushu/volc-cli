@@ -134,7 +134,7 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
 对应镜像仓库 OpenAPI(API 版本 2022-05-12). 模块级 flag 对全部子命令生效:
 
-    --region    实例所在 region. 优先级: --region flag > 环境变量 VOLC_CR_REGION > 默认 cn-north-1
+    --region    实例所在 region. 优先级: --region flag > 环境变量 VOLC_CR_REGION > 默认 cn-beijing(CR 不接受 cn-north-1 别名)
     --registry  镜像仓库实例名. 未指定时自动解析: 当前 region 唯一实例直接用; 多实例报错列出候选, 可先跑 list-registries 查看
 
     # 列出当前 region 全部镜像仓库实例(无实例时检查 --region)

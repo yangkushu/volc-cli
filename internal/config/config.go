@@ -47,10 +47,11 @@ func MaskSecret(s string) string {
 	return fmt.Sprintf("*** (len=%d)", len(s))
 }
 
-// DefaultCRRegion cr 模块默认 region(与 codepipeline 默认 region 一致).
-const DefaultCRRegion = "cn-north-1"
+// DefaultCRRegion cr 模块默认 region.
+const DefaultCRRegion = "cn-beijing"
 
-// ResolveRegion 返回 cr 模块生效的 region: flag 非空优先, 其次环境变量, 默认 cn-north-1.
+// ResolveRegion 返回 cr 模块生效的 region: flag 非空优先, 其次环境变量, 默认 cn-beijing.
+// 注意 CR 服务不接受 cn-north-1 别名(2026-09-14 实测 InvalidRegion), 必须用新命名.
 func ResolveRegion(flagVal string) string {
 	if flagVal != "" {
 		return flagVal

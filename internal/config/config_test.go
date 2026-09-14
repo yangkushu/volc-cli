@@ -43,8 +43,8 @@ func TestResolveWorkspaceIdMissing(t *testing.T) {
 
 func TestResolveRegion(t *testing.T) {
 	t.Setenv(EnvCRRegion, "")
-	if got := ResolveRegion(""); got != "cn-north-1" {
-		t.Errorf("默认 region 应为 cn-north-1, got %s", got)
+	if got := ResolveRegion(""); got != "cn-beijing" {
+		t.Errorf("默认 region 应为 cn-beijing, got %s", got)
 	}
 	t.Setenv(EnvCRRegion, "cn-shanghai")
 	if got := ResolveRegion(""); got != "cn-shanghai" {
