@@ -38,9 +38,11 @@ allowed-tools: Bash(volc-cli:*)
 5. 列流水线(不知道名称/ID 时): `volc-cli codepipeline list-pipelines`
 6. 列工作区(不知道 WorkspaceId 时): `volc-cli codepipeline list-workspaces`
 7. 镜像仓库查询: `volc-cli cr list-registries`(region 默认 cn-beijing, 实例如在其他 region 用 --region 或 VOLC_CR_REGION 切换)
-8. 列命名空间/仓库/版本: `volc-cli cr list-namespaces` / `list-repositories --namespace N` / `list-tags --namespace N [--repository X]`
+8. 列命名空间/仓库/版本: `volc-cli cr list-namespaces` / `list-repositories --namespace N [--tag-count]` / `list-tags --namespace N [--repository X]`
+   - tag 配额排查: `list-repositories --tag-count` 看各仓库 tag 水位(小微版单仓库上限 100, 顶满会导致推送失败)
 9. 清理过期版本(两步, 不自动批量删):
-   - 圈候选: `volc-cli cr list-tags --namespace N [--repository X] --older-than 30d [--keep-last 10] [--tag-prefix ci-]`
+   - 圈候选: `volc-cli cr list-tags --namespace N [--repository X] --older-than 30d [--keep-last 10] [--oldest 20] [--tag-prefix ci-]`
+     (--oldest N 取 PushTime 最早 N 个, 适合"清理最早的 X 个"需求; 时间戳 tag 与语义版本 tag 的删除风险不同, 列表展示时向用户说明)
    - 把候选清单展示给用户, 获得对具体 tag 列表的明确确认后执行:
      `volc-cli cr delete-tags --namespace N --repository X --tags t1,t2 --yes`
 
@@ -52,4 +54,4 @@ allowed-tools: Bash(volc-cli:*)
 - AK/SK 是敏感信息: 永远不要把 key 内容写进命令输出、日志或对话
 - 给用户排查结论时, 先给定位(stage/task/step), 再给错误日志原文, 最后给控制台链接
 - cr 删除必须基于用户确认过的显式 tag 列表(`--tags`), 不做自动批量删除; 先 list-tags 圈候选再人工确认
-- PushTime 显示"(未知)"的版本不参与 older-than/keep-last 候选(宁漏删不错删), 处置需用户单独确认
+- PushTime 显示"(未知)"的版本不参与 older-than/keep-last/oldest 候选(宁漏删不错删), 处置需用户单独确认

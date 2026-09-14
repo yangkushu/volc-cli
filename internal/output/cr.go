@@ -3,6 +3,7 @@ package output
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -48,19 +49,38 @@ func PrintNamespacesTo(w io.Writer, items []*cr.ItemForListNamespacesOutput) err
 }
 
 // PrintRepositoriesTo 以表格输出 OCI 制品仓库列表.
-func PrintRepositoriesTo(w io.Writer, items []*cr.ItemForListRepositoriesOutput) error {
+// tagCounts 非空时追加 TAG_COUNT 列, key 为 "<namespace>/<name>", 缺失项显示 "-".
+func PrintRepositoriesTo(w io.Writer, items []*cr.ItemForListRepositoriesOutput, tagCounts map[string]int64) error {
 	if len(items) == 0 {
 		fmt.Fprintln(w, "无制品仓库")
 		return nil
 	}
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "NAMESPACE\tNAME\tACCESS_LEVEL\tCREATE_TIME")
+	if tagCounts == nil {
+		fmt.Fprintln(tw, "NAMESPACE\tNAME\tACCESS_LEVEL\tCREATE_TIME")
+		for _, r := range items {
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
+				volcengine.StringValue(r.Namespace), volcengine.StringValue(r.Name),
+				volcengine.StringValue(r.AccessLevel), volcengine.StringValue(r.CreateTime))
+		}
+		return tw.Flush()
+	}
+	fmt.Fprintln(tw, "NAMESPACE\tNAME\tACCESS_LEVEL\tCREATE_TIME\tTAG_COUNT")
 	for _, r := range items {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n",
+		count := "-"
+		if n, ok := tagCounts[RepoKey(r)]; ok {
+			count = strconv.FormatInt(n, 10)
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 			volcengine.StringValue(r.Namespace), volcengine.StringValue(r.Name),
-			volcengine.StringValue(r.AccessLevel), volcengine.StringValue(r.CreateTime))
+			volcengine.StringValue(r.AccessLevel), volcengine.StringValue(r.CreateTime), count)
 	}
 	return tw.Flush()
+}
+
+// RepoKey 返回制品仓库的计数 map key: "<namespace>/<name>".
+func RepoKey(r *cr.ItemForListRepositoriesOutput) string {
+	return volcengine.StringValue(r.Namespace) + "/" + volcengine.StringValue(r.Name)
 }
 
 // PrintTagsTo 以表格输出 tag 列表/清理候选.
@@ -125,8 +145,8 @@ func PrintRegistries(items []*cr.ItemForListRegistriesOutput) error {
 func PrintNamespaces(items []*cr.ItemForListNamespacesOutput) error {
 	return PrintNamespacesTo(stdout, items)
 }
-func PrintRepositories(items []*cr.ItemForListRepositoriesOutput) error {
-	return PrintRepositoriesTo(stdout, items)
+func PrintRepositories(items []*cr.ItemForListRepositoriesOutput, tagCounts map[string]int64) error {
+	return PrintRepositoriesTo(stdout, items, tagCounts)
 }
 func PrintTags(views []crtag.TagView, withRepo, withReason bool) error {
 	return PrintTagsTo(stdout, views, withRepo, withReason)

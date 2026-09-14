@@ -120,3 +120,64 @@ func TestFilterZeroCriteriaReturnsAll(t *testing.T) {
 		}
 	}
 }
+
+func TestFilterOldest(t *testing.T) {
+	var tags []*cr.ItemForListTagsOutput
+	for i := 0; i < 12; i++ {
+		tags = append(tags, mkTag(string(rune('a'+i)), time.Date(2026, 9, 1, 0, 0, i, 0, time.UTC).Format(time.RFC3339)))
+	}
+	// 升序名次: a=0(最老) ... l=11(最新); oldest 3 → a,b,c
+	got := names(Filter(tags, Criteria{Oldest: 3, Now: now}))
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Errorf("oldest 3 应圈定最早的 a,b,c, got %v", got)
+	}
+	vs := Filter(tags, Criteria{Oldest: 3, Now: now})
+	if !strings.Contains(vs[0].Reason, "oldest:3") {
+		t.Errorf("Reason 应含 oldest:3, got %q", vs[0].Reason)
+	}
+}
+
+func TestFilterOldestUnknownPushTimeNeverCandidate(t *testing.T) {
+	tags := []*cr.ItemForListTagsOutput{
+		mkTag("a", "2026-09-01T00:00:00Z"),
+		mkTag("bad", "garbage"),
+		mkTag("b", "2026-09-02T00:00:00Z"),
+	}
+	// 已知时间的 tag 只有 a/b; oldest 2 → a,b; bad 永不候选
+	got := names(Filter(tags, Criteria{Oldest: 2, Now: now}))
+	if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+		t.Errorf("未知 PushTime 的 bad 永不候选, oldest 2 应圈定 a,b, got %v", got)
+	}
+}
+
+func TestFilterOldestCombinedWithOlderThan(t *testing.T) {
+	// 升序: a(08-01) b(08-02) c(08-03) f..l(09-10T00..06) d(09-11T12) e(09-12)
+	// oldest 5 = a,b,c,f,g; 3 天线=09-09, 早于它的只有 a,b,c → 交集 a,b,c
+	tags := []*cr.ItemForListTagsOutput{
+		mkTag("a", "2026-08-01T00:00:00Z"),
+		mkTag("b", "2026-08-02T00:00:00Z"),
+		mkTag("c", "2026-08-03T00:00:00Z"),
+		mkTag("d", "2026-09-11T12:00:00Z"),
+		mkTag("e", "2026-09-12T00:00:00Z"),
+	}
+	for i := 0; i < 7; i++ { // f..l = 09-10T00:00..06:00, 均在 3 天线之后
+		tags = append(tags, mkTag(string(rune('f'+i)), time.Date(2026, 9, 10, i, 0, 0, 0, time.UTC).Format(time.RFC3339)))
+	}
+	got := names(Filter(tags, Criteria{Oldest: 5, OlderThan: 3 * 24 * time.Hour, Now: now}))
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Errorf("oldest 5 ∩ older-than 3d 应圈定 a,b,c, got %v", got)
+	}
+}
+
+func TestReasonDurationFormat(t *testing.T) {
+	tags := []*cr.ItemForListTagsOutput{mkTag("old", "2026-07-01T00:00:00Z")}
+	vs := Filter(tags, Criteria{OlderThan: 30 * 24 * time.Hour, Now: now})
+	if vs[0].Reason != "older-than:30d" {
+		t.Errorf("older-than 原因应紧凑显示 30d, got %q", vs[0].Reason)
+	}
+	tags = []*cr.ItemForListTagsOutput{mkTag("old", "2026-07-01T00:00:00Z")}
+	vs = Filter(tags, Criteria{OlderThan: 12 * time.Hour, Now: now})
+	if vs[0].Reason != "older-than:12h" {
+		t.Errorf("older-than 原因应显示 12h, got %q", vs[0].Reason)
+	}
+}

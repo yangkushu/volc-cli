@@ -50,11 +50,32 @@ func TestPrintNamespacesAndRepositories(t *testing.T) {
 	repos := []*cr.ItemForListRepositoriesOutput{
 		{Name: sptr("svc-api"), Namespace: sptr("team-a"), AccessLevel: sptr("Private")},
 	}
-	if err := PrintRepositoriesTo(&buf, repos); err != nil {
+	if err := PrintRepositoriesTo(&buf, repos, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(buf.String(), "svc-api") || !strings.Contains(buf.String(), "Private") {
 		t.Errorf("制品仓库表格应包含 svc-api/Private, got:\n%s", buf.String())
+	}
+	if strings.Contains(buf.String(), "TAG_COUNT") {
+		t.Errorf("无计数时不应有 TAG_COUNT 列, got:\n%s", buf.String())
+	}
+}
+
+func TestPrintRepositoriesWithTagCount(t *testing.T) {
+	var buf bytes.Buffer
+	repos := []*cr.ItemForListRepositoriesOutput{
+		{Name: sptr("full"), Namespace: sptr("ns")},
+		{Name: sptr("miss"), Namespace: sptr("ns")},
+	}
+	counts := map[string]int64{"ns/full": 100}
+	if err := PrintRepositoriesTo(&buf, repos, counts); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	for _, want := range []string{"TAG_COUNT", "100", "miss", "-"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("计数表格应包含 %q, got:\n%s", want, out)
+		}
 	}
 }
 

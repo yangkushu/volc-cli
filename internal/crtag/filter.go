@@ -13,6 +13,7 @@ import (
 type Criteria struct {
 	OlderThan time.Duration // >0: PushTime 早于 Now-OlderThan 才候选
 	KeepLast  int           // >0: 按 PushTime 降序保留最近 KeepLast 个, 排名 >= KeepLast 才候选
+	Oldest    int           // >0: 按 PushTime 升序取最早 Oldest 个才候选(与 KeepLast 语义对称)
 	TagPrefix string        // 非空: tag 名需有该前缀
 	TagNames  []string      // 非空: tag 名需精确命中
 	Now       time.Time     // 时间基准, 零值取 time.Now()(测试注入)
@@ -32,14 +33,17 @@ func Filter(tags []*cr.ItemForListTagsOutput, c Criteria) []TagView {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	if c.OlderThan == 0 && c.KeepLast == 0 && c.TagPrefix == "" && len(c.TagNames) == 0 {
+	if c.OlderThan == 0 && c.KeepLast == 0 && c.Oldest == 0 && c.TagPrefix == "" && len(c.TagNames) == 0 {
 		views := make([]TagView, 0, len(tags))
 		for _, t := range tags {
 			views = append(views, TagView{Tag: t})
 		}
 		return views
 	}
-	rank := keepLastRank(tags)
+	var rank map[string]int
+	if c.KeepLast > 0 || c.Oldest > 0 {
+		rank = keepLastRank(tags)
+	}
 	var out []TagView
 	for _, t := range tags {
 		name := ""
@@ -64,7 +68,7 @@ func Filter(tags []*cr.ItemForListTagsOutput, c Criteria) []TagView {
 			if !ok || !pt.Before(now.Add(-c.OlderThan)) {
 				continue
 			}
-			reasons = append(reasons, "older-than:"+c.OlderThan.String())
+			reasons = append(reasons, "older-than:"+formatDurationForReason(c.OlderThan))
 		}
 		if c.KeepLast > 0 {
 			r, ok := rank[name]
@@ -72,6 +76,14 @@ func Filter(tags []*cr.ItemForListTagsOutput, c Criteria) []TagView {
 				continue
 			}
 			reasons = append(reasons, "beyond-keep-last:"+strconv.Itoa(c.KeepLast))
+		}
+		if c.Oldest > 0 {
+			// rank 为降序名次(0=最新); 升序名次 = len(rank)-1-r, 候选需升序名次 < Oldest
+			r, ok := rank[name]
+			if !ok || r < len(rank)-c.Oldest {
+				continue
+			}
+			reasons = append(reasons, "oldest:"+strconv.Itoa(c.Oldest))
 		}
 		out = append(out, TagView{Tag: t, Reason: strings.Join(reasons, "+")})
 	}
@@ -107,6 +119,15 @@ func parsePushTimeOf(t *cr.ItemForListTagsOutput) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return ParsePushTime(*t.PushTime)
+}
+
+// formatDurationForReason 将 OlderThan 时长渲染为紧凑形式: 整天显示 Nd, 否则 Nh(输入仅支持 d/h).
+func formatDurationForReason(d time.Duration) string {
+	h := int64(d / time.Hour)
+	if h > 0 && h%24 == 0 {
+		return strconv.FormatInt(h/24, 10) + "d"
+	}
+	return strconv.FormatInt(h, 10) + "h"
 }
 
 func containsName(names []string, s string) bool {

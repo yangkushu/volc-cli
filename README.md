@@ -144,7 +144,7 @@ region 固定 cn-north-1(持续交付仅北京 region).
     volc-cli cr list-namespaces
 
     # 列出命名空间下全部 OCI 制品仓库(--namespace 支持逗号分隔多个, 省略时列出全部)
-    volc-cli cr list-repositories [--namespace N]
+    volc-cli cr list-repositories [--namespace N] [--tag-count]
 
     # 列出制品仓库全部版本(--repository 省略时遍历该命名空间下全部仓库, 只读聚合)
     volc-cli cr list-tags --namespace N [--repository X]
@@ -156,6 +156,7 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
     --older-than 30d   PushTime 早于 N 天前(支持 Nd/Nh)
     --keep-last 10     每个仓库按 PushTime 降序保留最近 N 个, 其余为候选
+    --oldest 20        按 PushTime 升序取最早 N 个为候选(与 --keep-last 对称)
     --tag-prefix ci-   tag 名前缀匹配
     --tag-names t1,t2  tag 名精确匹配
 
@@ -174,6 +175,8 @@ region 固定 cn-north-1(持续交付仅北京 region).
 - PushTime 无法解析(表格显示"(未知)")的版本永不进入清理候选(宁漏删不错删), 需人工单独处置
 
 所有命令加 `--json` 切结构化输出(list-tags 多仓库聚合时 JSON 按仓库分组).
+
+配额排查: `volc-cli cr list-repositories --tag-count` 输出每仓库 tag 总数列(逐仓库调计数接口, 较慢). 小微版实例单仓库 tag 上限 100, 顶满会导致新镜像推送失败, 用 `--older-than`/`--oldest` 圈定候选后走删除流程.
 
 ## AI Skill（Claude Code / Codex / Cursor）
 

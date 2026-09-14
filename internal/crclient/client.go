@@ -142,3 +142,19 @@ func (c *Client) DeleteTags(ctx context.Context, registry, namespace, repository
 		Names:      ptrs,
 	})
 }
+
+// CountTags 返回某制品仓库的 tag 总数(只拉一页读 TotalCount, 比拉全量省流量).
+func (c *Client) CountTags(ctx context.Context, registry, namespace, repository string) (int64, error) {
+	page, size := int64(1), int64(1)
+	resp, err := c.svc.ListTagsWithContext(ctx, &cr.ListTagsInput{
+		Registry:   &registry,
+		Namespace:  &namespace,
+		Repository: &repository,
+		PageNumber: &page,
+		PageSize:   &size,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("ListTags(%s/%s) 计数失败: %w", namespace, repository, err)
+	}
+	return volcengine.Int64Value(resp.TotalCount), nil
+}
