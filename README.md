@@ -162,8 +162,9 @@ region 固定 cn-north-1(持续交付仅北京 region).
 
 清理过期版本是两步流, CLI 不做自动批量删除:
 
-    # 第一步: 圈候选(只读)
+    # 第一步: 圈候选(只读); --oldest N 变体适合"清理最早的 X 个"
     volc-cli cr list-tags --namespace N --repository X --older-than 30d --keep-last 10
+    volc-cli cr list-tags --namespace N --repository X --oldest 20
 
     # 第二步: 人工确认候选清单后, 对显式列表执行删除
     volc-cli cr delete-tags --namespace N --repository X --tags t1,t2 --yes
